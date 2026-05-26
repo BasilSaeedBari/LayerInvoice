@@ -12,6 +12,7 @@ import (
 	"layerinvoice/internal/money"
 	"layerinvoice/internal/pdf"
 	"layerinvoice/internal/mail"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -282,6 +283,8 @@ func (h *InvoicesHandler) Show(w http.ResponseWriter, r *http.Request) {
 		for liRows.Next() {
 			var li LineItemViewModel
 			if err := liRows.Scan(&li.ID, &li.Name, &li.Description, &li.Quantity, &li.Unit, &li.UnitPrice, &li.LineTotal, &li.ItemType); err == nil {
+				qtyF, _ := strconv.ParseFloat(li.Quantity, 64)
+				li.Quantity = fmt.Sprintf("%d", calculator.RoundHalfUp(qtyF))
 				data.LineItems = append(data.LineItems, li)
 			}
 		}
@@ -354,6 +357,7 @@ func (h *InvoicesHandler) AddCustomRow(w http.ResponseWriter, r *http.Request) {
 		"Unit":             "pcs",
 		"UnitPriceDisplay": "0.00",
 		"LineTotalDisplay": "0.00",
+		"ParentType":       "invoices",
 	}
 
 	RenderPartial(w, r, h.app.TemplatesFS, "templates/invoices/partials/line_item_row.html", "line_item_row", data)
@@ -385,8 +389,12 @@ func (h *InvoicesHandler) UpdateRow(w http.ResponseWriter, r *http.Request) {
 	unit := r.FormValue("unit")
 
 	// Parse values
-	qty, err := strconv.ParseFloat(qtyStr, 64)
-	if err != nil || qty < 0 {
+	qtyFloat, err := strconv.ParseFloat(qtyStr, 64)
+	if err != nil || qtyFloat < 0 {
+		qtyFloat = 1
+	}
+	qty := calculator.RoundHalfUp(qtyFloat)
+	if qty < 1 {
 		qty = 1
 	}
 
@@ -395,7 +403,7 @@ func (h *InvoicesHandler) UpdateRow(w http.ResponseWriter, r *http.Request) {
 		priceMoney = money.Zero("PKR")
 	}
 
-	lineTotal := calculator.RoundHalfUp(qty * float64(priceMoney.Amount))
+	lineTotal := qty * priceMoney.Amount
 
 	// Update DB record
 	query := `
@@ -405,7 +413,7 @@ func (h *InvoicesHandler) UpdateRow(w http.ResponseWriter, r *http.Request) {
 	`
 	now := time.Now().Format(time.RFC3339)
 	_, err = h.app.DB.ExecContext(r.Context(), query,
-		name, desc, fmt.Sprintf("%.2f", qty), unit, priceMoney.Amount, lineTotal, now,
+		name, desc, fmt.Sprintf("%d", qty), unit, priceMoney.Amount, lineTotal, now,
 		tenant.ID, invoiceID, liID,
 	)
 
@@ -644,11 +652,14 @@ func (h *InvoicesHandler) AddPrintItem(w http.ResponseWriter, r *http.Request) {
 	failureRate, _ := strconv.ParseInt(failStr, 10, 64)
 	profitMultiplier, _ := strconv.ParseInt(multStr, 10, 64)
 
-	// Fetch filament cost per gram
+	// Fetch filament cost per gram and details
 	var costPerGram int64
+	var filName, filBrand, filMaterial string
 	_ = h.app.DB.QueryRowContext(r.Context(), `
-		SELECT cost_per_gram FROM filament_profiles WHERE tenant_id = ? AND id = ?
-	`, tenant.ID, filamentID).Scan(&costPerGram)
+		SELECT cost_per_gram, name, COALESCE(brand, ''), material 
+		FROM filament_profiles 
+		WHERE tenant_id = ? AND id = ?
+	`, tenant.ID, filamentID).Scan(&costPerGram, &filName, &filBrand, &filMaterial)
 
 	// Calculate cost
 	calcIn := calculator.PrintJobInputs{
@@ -667,6 +678,44 @@ func (h *InvoicesHandler) AddPrintItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res := calculator.Calculate(calcIn)
+
+	// Build dynamic rich sub-description
+	richDesc := ""
+	if description != "" {
+		richDesc += description + "\n"
+	}
+	filInfo := filName
+	if filBrand != "" {
+		filInfo = filBrand + " " + filInfo
+	}
+	if filMaterial != "" {
+		filInfo = filInfo + " (" + filMaterial + ")"
+	}
+	richDesc += fmt.Sprintf("• Filament: %s [%.2fg used]\n", filInfo, grams)
+	richDesc += fmt.Sprintf("• Print Time: %.1f hours (Rate: Rs %.2f/hr)\n", hours, float64(timeRate.Amount)/100.0)
+
+	var overheads []string
+	if labour.Amount > 0 {
+		overheads = append(overheads, fmt.Sprintf("Labor (Rs %.2f)", float64(labour.Amount)/100.0))
+	}
+	if electricity.Amount > 0 {
+		overheads = append(overheads, fmt.Sprintf("Electricity (Rs %.2f)", float64(electricity.Amount)/100.0))
+	}
+	if postproc.Amount > 0 {
+		overheads = append(overheads, fmt.Sprintf("Post-processing (Rs %.2f)", float64(postproc.Amount)/100.0))
+	}
+	if packaging.Amount > 0 {
+		overheads = append(overheads, fmt.Sprintf("Packaging (Rs %.2f)", float64(packaging.Amount)/100.0))
+	}
+	if shipping.Amount > 0 {
+		overheads = append(overheads, fmt.Sprintf("Shipping (Rs %.2f)", float64(shipping.Amount)/100.0))
+	}
+
+	if len(overheads) > 0 {
+		richDesc += "• Overheads: " + strings.Join(overheads, ", ")
+	} else {
+		richDesc = strings.TrimSuffix(richDesc, "\n")
+	}
 
 	// Insert row
 	id := db.NewULID()
@@ -691,7 +740,7 @@ func (h *InvoicesHandler) AddPrintItem(w http.ResponseWriter, r *http.Request) {
 	`
 
 	_, err := h.app.DB.ExecContext(r.Context(), query,
-		id, tenant.ID, invoiceID, name, description,
+		id, tenant.ID, invoiceID, name, richDesc,
 		res.FinalPrice, res.FinalPrice,
 		filamentID, fmt.Sprintf("%.2f", grams), res.RawFilamentCost, filamentProfitPct,
 		fmt.Sprintf("%.1f", hours), timeRate.Amount, res.TimeCost, labour.Amount, electricity.Amount,
@@ -717,11 +766,12 @@ func (h *InvoicesHandler) AddPrintItem(w http.ResponseWriter, r *http.Request) {
 		"ID":               id,
 		"InvoiceID":        invoiceID,
 		"Name":             name,
-		"Description":      description,
+		"Description":      richDesc,
 		"Quantity":         "1",
 		"Unit":             "pcs",
 		"UnitPriceDisplay": money.FormatAmount(res.FinalPrice),
 		"LineTotalDisplay": money.FormatAmount(res.FinalPrice),
+		"ParentType":       "invoices",
 	}
 
 	RenderPartial(w, r, h.app.TemplatesFS, "templates/invoices/partials/line_item_row.html", "line_item_row", data)
@@ -974,14 +1024,14 @@ func (h *InvoicesHandler) generatePDFBytes(ctx context.Context, tenantID, invoic
 			rows.Scan(&li.Name, &li.Description, &qtyStr, &li.Unit, &li.UnitPrice, &li.LineTotal)
 			
 			qty, _ := strconv.ParseFloat(qtyStr, 64)
-			li.Quantity = fmt.Sprintf("%.2f", qty)
-			if strings.HasSuffix(li.Quantity, ".00") {
-				li.Quantity = li.Quantity[:len(li.Quantity)-3]
-			}
+			li.Quantity = fmt.Sprintf("%d", calculator.RoundHalfUp(qty))
 			
 			items = append(items, li)
 		}
 	}
+
+	companyLogo := h.getSetting(ctx, tenantID, "company_logo", "")
+	browserPath := h.getSetting(ctx, tenantID, "pdf_browser_path", "")
 
 	doc := pdf.PDFDocument{
 		Title:           "INVOICE",
@@ -989,6 +1039,7 @@ func (h *InvoicesHandler) generatePDFBytes(ctx context.Context, tenantID, invoic
 		IssueDate:       issueDate,
 		ExpiryOrDueDate: dueDate,
 		Currency:        currency,
+		CompanyLogo:     companyLogo,
 		SellerName:      sellerName,
 		SellerAddress:   sellerAddress,
 		SellerContact:   sellerContact,
@@ -1006,7 +1057,7 @@ func (h *InvoicesHandler) generatePDFBytes(ctx context.Context, tenantID, invoic
 		Terms:           terms,
 	}
 
-	pdfBytes, err := pdf.Generate(doc)
+	pdfBytes, err := pdf.Generate(doc, browserPath)
 	return pdfBytes, invNo, err
 }
 
@@ -1079,12 +1130,31 @@ Best regards,
 
 	err = m.Send(clientEmail, subject, bodyHTML, attachment)
 
+	status := "sent"
+	var errStr sql.NullString
 	if err != nil {
-		fmt.Printf("[Mailer] Failed to send email for invoice %s to %s: %v\n", invoiceNum, clientEmail, err)
-		return
+		status = "failed"
+		errStr.String = err.Error()
+		errStr.Valid = true
+		
+		// Structured error log and stderr console display
+		slog.Error("SMTP auto-email dispatch failed", "invoice", invoiceNum, "client", clientEmail, "error", err)
+		fmt.Printf("[Mailer Error] Failed to send email for invoice %s to %s: %v\n", invoiceNum, clientEmail, err)
+	} else {
+		slog.Info("SMTP auto-email sent successfully", "invoice", invoiceNum, "client", clientEmail)
+		fmt.Printf("[Mailer] Auto-sent invoice %s email successfully to %s\n", invoiceNum, clientEmail)
 	}
 
-	fmt.Printf("[Mailer] Auto-sent invoice %s email successfully to %s\n", invoiceNum, clientEmail)
+	// Dynamic database audit log of email dispatch inside email_log
+	logID := db.NewULID()
+	now := time.Now().Format(time.RFC3339)
+	_, logErr := h.app.DB.ExecContext(ctx, `
+		INSERT INTO email_log (id, tenant_id, parent_type, parent_id, to_address, subject, status, error, sent_at)
+		VALUES (?, ?, 'invoice', ?, ?, ?, ?, ?, ?)
+	`, logID, tenantID, invoiceID, clientEmail, subject, status, errStr, now)
+	if logErr != nil {
+		slog.Error("Failed to save email dispatch log record", "error", logErr)
+	}
 }
 
 // triggerDebouncedEmail schedules/debounces automatic email dispatch.

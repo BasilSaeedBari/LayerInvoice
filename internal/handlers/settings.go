@@ -2,9 +2,15 @@ package handlers
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
+	"io"
 	"layerinvoice/internal/app"
 	"layerinvoice/internal/auth"
+	"layerinvoice/internal/mail"
+	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -29,6 +35,7 @@ type SettingsPageData struct {
 	CompanyEmail    string
 	CompanyPhone    string
 	CompanyCurrency string
+	CompanyLogo     string
 
 	SMTPHost      string
 	SMTPPort      string
@@ -53,6 +60,7 @@ func (h *SettingsHandler) ShowCompany(w http.ResponseWriter, r *http.Request) {
 		CompanyEmail:    h.getSetting(ctx, tenant.ID, "company_email", ""),
 		CompanyPhone:    h.getSetting(ctx, tenant.ID, "company_phone", ""),
 		CompanyCurrency: h.getSetting(ctx, tenant.ID, "company_currency", "PKR"),
+		CompanyLogo:     h.getSetting(ctx, tenant.ID, "company_logo", ""),
 	}
 
 	Render(w, r, h.app.TemplatesFS, "base", "settings/company.html", data, "Company Settings", "settings")
@@ -63,9 +71,10 @@ func (h *SettingsHandler) SaveCompany(w http.ResponseWriter, r *http.Request) {
 	tenant, _ := auth.GetTenant(r.Context())
 	ctx := r.Context()
 
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
+	// Parse multipart form (max 5MB file upload)
+	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil {
+		// Fallback to standard parse if not multipart
+		_ = r.ParseForm()
 	}
 
 	fields := []string{
@@ -76,6 +85,28 @@ func (h *SettingsHandler) SaveCompany(w http.ResponseWriter, r *http.Request) {
 	for _, key := range fields {
 		val := r.FormValue(key)
 		h.saveSetting(ctx, tenant.ID, key, val)
+	}
+
+	// Handle company logo file upload
+	file, header, err := r.FormFile("company_logo")
+	if err == nil {
+		defer file.Close()
+
+		// Read all file bytes robustly using io.ReadAll
+		buf, err := io.ReadAll(file)
+		if err == nil && len(buf) > 0 {
+			// Get mime type
+			mimeType := header.Header.Get("Content-Type")
+			if mimeType == "" {
+				mimeType = "image/png" // default
+			}
+
+			// Encode to base64 data URL
+			base64Str := base64.StdEncoding.EncodeToString(buf)
+			dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Str)
+
+			h.saveSetting(ctx, tenant.ID, "company_logo", dataURL)
+		}
 	}
 
 	companyName := r.FormValue("company_name")
@@ -126,6 +157,74 @@ func (h *SettingsHandler) SaveEmail(w http.ResponseWriter, r *http.Request) {
 
 	SetFlash(w, "flash_success", "SMTP server configurations saved.")
 	http.Redirect(w, r, "/settings/email", http.StatusSeeOther)
+}
+
+// TestEmail dispatches a real-time connection check message.
+func (h *SettingsHandler) TestEmail(w http.ResponseWriter, r *http.Request) {
+	tenant, _ := auth.GetTenant(r.Context())
+	ctx := r.Context()
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	smtpHost := r.FormValue("smtp_host")
+	smtpPortStr := r.FormValue("smtp_port")
+	smtpUser := r.FormValue("smtp_user")
+	smtpPass := r.FormValue("smtp_pass")
+	smtpFromEmail := r.FormValue("smtp_from_email")
+	smtpFromName := r.FormValue("smtp_from_name")
+
+	// Fallback to database configurations if form fields are blank
+	if smtpHost == "" {
+		smtpHost = h.getSetting(ctx, tenant.ID, "smtp_host", "")
+	}
+	if smtpPortStr == "" {
+		smtpPortStr = h.getSetting(ctx, tenant.ID, "smtp_port", "")
+	}
+	if smtpUser == "" {
+		smtpUser = h.getSetting(ctx, tenant.ID, "smtp_user", "")
+	}
+	if smtpPass == "" {
+		smtpPass = h.getSetting(ctx, tenant.ID, "smtp_pass", "")
+	}
+	if smtpFromEmail == "" {
+		smtpFromEmail = h.getSetting(ctx, tenant.ID, "smtp_from_email", "")
+	}
+	if smtpFromName == "" {
+		smtpFromName = h.getSetting(ctx, tenant.ID, "smtp_from_name", "")
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	if smtpHost == "" || smtpPortStr == "" || smtpUser == "" || smtpPass == "" || smtpFromEmail == "" {
+		w.Write([]byte(`<div class="li-flash li-flash--error" style="position:static; margin-bottom:var(--space-4); max-width:100%;">✗ Please fill in all required SMTP fields to send a test email.</div>`))
+		return
+	}
+
+	smtpPort, err := strconv.Atoi(smtpPortStr)
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf(`<div class="li-flash li-flash--error" style="position:static; margin-bottom:var(--space-4); max-width:100%%;">✗ Invalid port number: %v</div>`, err)))
+		return
+	}
+
+	m := mail.NewMailer(smtpHost, smtpPort, smtpUser, smtpPass, smtpFromEmail, smtpFromName)
+	
+	subject := "LayerInvoice SMTP Connection Test"
+	bodyHTML := "<h3>SMTP Mailer Connection Test Successful!</h3><p>Your LayerInvoice SMTP email server is correctly configured and successfully sending outbound mail.</p>"
+	
+	err = m.Send(smtpFromEmail, subject, bodyHTML)
+	if err != nil {
+		// Output structured logs and stdout details to standard debug console
+		slog.Error("SMTP test connection failed", "error", err, "host", smtpHost, "port", smtpPort, "user", smtpUser)
+		fmt.Printf("[Mailer Error] SMTP connection failed: %v\n", err)
+
+		w.Write([]byte(fmt.Sprintf(`<div class="li-flash li-flash--error" style="position:static; margin-bottom:var(--space-4); max-width:100%%;">✗ SMTP Connection Failed: %v</div>`, err)))
+		return
+	}
+
+	w.Write([]byte(`<div class="li-flash li-flash--success" style="position:static; margin-bottom:var(--space-4); max-width:100%;">✓ Connection Successful! Test email sent to ` + smtpFromEmail + `</div>`))
 }
 
 // Helpers

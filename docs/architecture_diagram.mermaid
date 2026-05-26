@@ -1,0 +1,84 @@
+graph TD
+    %% Styling and colors
+    classDef main fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff;
+    classDef crm fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff;
+    classDef billing fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff;
+    classDef engine fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff;
+    classDef storage fill:#64748b,stroke:#475569,stroke-width:2px,color:#fff;
+
+    subgraph Client Portal & Browser UI
+        UI[PicoCSS + Alpine.js + HTMX Frontend]:::main
+    end
+
+    subgraph Core Server [Go + Chi Router]
+        Router[Router / Middleware]:::main
+        SessionStore[Session Store]:::main
+        Scheduler[Background Job Scheduler]:::engine
+        Debouncer[SMTP Debouncer Worker]:::engine
+    end
+
+    subgraph Business Modules
+        CRM[Clients CRM Handler]:::crm
+        Filaments[Filament Profiles Handler]:::crm
+        Quotes[Quotes CRM Handler]:::billing
+        Invoices[Invoices Handler]:::billing
+        Payments[Payments Registry Handler]:::billing
+        Dashboard[Dashboard Aggregator]:::main
+    end
+
+    subgraph Technical Engines
+        Calc[3D Print Cost Calculator]:::engine
+        PDF[PDF Renderer Chromedp Headless]:::engine
+        Mailer[SMTP Mailer Engine]:::engine
+    end
+
+    subgraph Persistence Layer [SQLite Database]
+        DB[(layerinvoice.db WAL Mode)]:::storage
+    end
+
+    %% Flow connections
+    UI -->|HTTP Request| Router
+    Router -->|Authenticate Session| SessionStore
+    SessionStore <-->|Query Session Data| DB
+    Router -->|Protected Handlers| Dashboard
+    Router -->|Protected Handlers| CRM
+    Router -->|Protected Handlers| Filaments
+    Router -->|Protected Handlers| Quotes
+    Router -->|Protected Handlers| Invoices
+    Router -->|Protected Handlers| Payments
+
+    %% Business updates
+    CRM -->|Create/Edit Clients| DB
+    Filaments -->|Save Filament Presets| DB
+    Quotes -->|Save Quote Estimates| DB
+    Invoices -->|Save Invoice Drafts| DB
+    Payments -->|Log Payment Receipts| DB
+
+    %% Quote Conversion Flow
+    Quotes -->|1-Click Convert| Invoices
+    Invoices -->|Duplicate Line Items + Preserve 3d_print Type| DB
+
+    %% Cost Calculations
+    Invoices & Quotes -->|Trigger Live Preview hx-post| Calc
+    Calc -->|Raw Filament Cost + Markups + Machine Time + Overheads + Failure Buffer| UI
+    Invoices & Quotes -->|Add 3D Print Job| Calc
+    Calc -->|Generate Multi-line Detailed Description| DB
+
+    %% Debounced Mailer Workflow
+    Invoices -->|Line Item Save Event| Debouncer
+    Debouncer -->|5-Second Keystroke Delay| PDF
+    PDF -->|Compile programmatics bytes| Mailer
+    Mailer -->|Send Attachment PDF| UI
+    Mailer -.->|SMTP Server| ClientEmail[Client Mail Inbox]
+
+    %% Payments and Live Dashboard Update
+    Payments -->|Update Invoice Balance + status| DB
+    Dashboard -->|Sum Revenue + Print Hours + Weight from Paid Invoices| DB
+    DB -->|Inject metrics| Dashboard
+    Dashboard -->|Render dynamic stats cards| UI
+
+    class UI,Router,Dashboard main;
+    class CRM,Filaments crm;
+    class Quotes,Invoices,Payments billing;
+    class Calc,PDF,Mailer,Scheduler,Debouncer,SessionStore engine;
+    class DB storage;

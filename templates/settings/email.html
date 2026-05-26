@@ -54,7 +54,16 @@
     </div>
   </article>
 
-  <div style="display: flex; justify-content: flex-end; margin-top: var(--space-6);">
+  <div id="test-email-status" style="margin-top: var(--space-4); width: 100%;"></div>
+
+  <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6);">
+    <button type="button" 
+            hx-post="/settings/email/test" 
+            hx-target="#test-email-status" 
+            hx-indicator="#global-spinner"
+            class="li-btn li-btn--secondary">
+      ✉ Send Connection Test Email
+    </button>
     <button type="submit" class="li-btn li-btn--primary">
       Save SMTP Settings
     </button>

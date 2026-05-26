@@ -148,7 +148,7 @@
                 </td>
                 
                 <td>
-                  <input type="number" name="qty" value="{{.Quantity}}" step="0.01" min="0" placeholder="1"
+                  <input type="number" name="qty" value="{{.Quantity}}" step="1" min="0" placeholder="1"
                          hx-post="/invoices/{{$.Data.ID}}/line-items/{{.ID}}/update" hx-target="#li-total-{{.ID}}" hx-trigger="keyup changed delay:500ms, change" hx-include="closest tr">
                 </td>
                 
@@ -308,7 +308,7 @@
             <label>Filament Profit Markup %
               <input type="number" name="filament_profit_pct" value="100" min="0"
                      hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
-              <small>% markup (100% = 2× spool cost)</small>
+              <small>% markup on raw filament cost (e.g. 100% = 2× raw cost)</small>
             </label>
           </div>
         </div>

@@ -55,6 +55,9 @@ func Render(w http.ResponseWriter, r *http.Request, templatesFS embed.FS, layout
 		"safeHTML": func(s string) template.HTML {
 			return template.HTML(s)
 		},
+		"safeURL": func(s string) template.URL {
+			return template.URL(s)
+		},
 		"add": func(a, b int) int {
 			return a + b
 		},
@@ -127,6 +130,9 @@ func RenderPartial(w http.ResponseWriter, r *http.Request, templatesFS embed.FS,
 		},
 		"safeHTML": func(s string) template.HTML {
 			return template.HTML(s)
+		},
+		"safeURL": func(s string) template.URL {
+			return template.URL(s)
 		},
 		"add": func(a, b int) int {
 			return a + b

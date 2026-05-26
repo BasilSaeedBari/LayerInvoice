@@ -25,11 +25,12 @@ type User struct {
 
 // Tenant represents the multi-company scope.
 type Tenant struct {
-	ID        string
-	Name      string
-	Slug      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID          string
+	Name        string
+	Slug        string
+	CompanyLogo string // Base64 logo for global UI headers
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // SessionStore manages active user sessions.
@@ -96,6 +97,9 @@ func (s *SessionStore) ValidateSession(ctx context.Context, sessionID string) (*
 	}
 
 	u.IsActive = isActiveInt == 1
+
+	// Query logo setting from db for header render
+	_ = s.db.QueryRowContext(ctx, "SELECT value FROM settings WHERE tenant_id = ? AND key = 'company_logo'", t.ID).Scan(&t.CompanyLogo)
 
 	// Parse expiration timestamp
 	expiresAt, err := time.Parse(time.RFC3339, expiresAtStr)

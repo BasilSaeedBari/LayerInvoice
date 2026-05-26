@@ -245,6 +245,8 @@ func (h *QuotesHandler) Show(w http.ResponseWriter, r *http.Request) {
 		for liRows.Next() {
 			var li LineItemViewModel
 			if err := liRows.Scan(&li.ID, &li.Name, &li.Description, &li.Quantity, &li.Unit, &li.UnitPrice, &li.LineTotal, &li.ItemType); err == nil {
+				qtyF, _ := strconv.ParseFloat(li.Quantity, 64)
+				li.Quantity = fmt.Sprintf("%d", calculator.RoundHalfUp(qtyF))
 				data.LineItems = append(data.LineItems, li)
 			}
 		}
@@ -278,10 +280,11 @@ func (h *QuotesHandler) ConvertToInvoice(w http.ResponseWriter, r *http.Request)
 	// 1. Fetch quote
 	var clientID, quoteNo, currency string
 	var subtotal, taxRate, taxAmount, discountValue, total int64
+	var notes, terms sql.NullString
 	err := h.app.DB.QueryRowContext(ctx, `
-		SELECT client_id, quote_number, currency, subtotal, tax_rate, tax_amount, discount_value, total
+		SELECT client_id, quote_number, currency, subtotal, tax_rate, tax_amount, discount_value, total, notes, terms
 		FROM quotes WHERE tenant_id = ? AND id = ?
-	`, tenant.ID, quoteID).Scan(&clientID, &quoteNo, &currency, &subtotal, &taxRate, &taxAmount, &discountValue, &total)
+	`, tenant.ID, quoteID).Scan(&clientID, &quoteNo, &currency, &subtotal, &taxRate, &taxAmount, &discountValue, &total, &notes, &terms)
 
 	if err != nil {
 		SetFlash(w, "flash_error", "Failed to retrieve quote details.")
@@ -313,9 +316,9 @@ func (h *QuotesHandler) ConvertToInvoice(w http.ResponseWriter, r *http.Request)
 		INSERT INTO invoices (
 			id, tenant_id, client_id, quote_id, invoice_number, status, issue_date, due_date, currency,
 			subtotal, discount_type, discount_value, tax_rate, tax_amount, total, amount_paid, balance_due,
-			created_by, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, 'fixed', ?, ?, ?, ?, 0, ?, ?, ?, ?)
-	`, invoiceID, tenant.ID, clientID, quoteID, invNumber, today, dueDate, currency, subtotal, discountValue, taxRate, taxAmount, total, total, user.ID, now, now)
+			notes, terms, created_by, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, 'fixed', ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
+	`, invoiceID, tenant.ID, clientID, quoteID, invNumber, today, dueDate, currency, subtotal, discountValue, taxRate, taxAmount, total, total, notes, terms, user.ID, now, now)
 
 	if err != nil {
 		SetFlash(w, "flash_error", "Failed to insert invoice: "+err.Error())
@@ -326,7 +329,7 @@ func (h *QuotesHandler) ConvertToInvoice(w http.ResponseWriter, r *http.Request)
 	// 4. Duplicate Line Items
 	rows, err := tx.QueryContext(ctx, `
 		SELECT 
-			name, description, quantity, unit, unit_price, discount_type, discount_value, tax_rate, tax_amount, line_total,
+			item_type, name, description, quantity, unit, unit_price, discount_type, discount_value, tax_rate, tax_amount, line_total,
 			print_filament_id, print_grams, print_filament_cost, print_filament_profit_pct, print_hours, print_time_rate,
 			print_time_cost, print_labour_cost, print_electricity_cost, print_postproc_cost, print_packaging_cost,
 			print_shipping_cost, print_failure_rate, print_profit_multiplier, print_production_cost
@@ -338,14 +341,14 @@ func (h *QuotesHandler) ConvertToInvoice(w http.ResponseWriter, r *http.Request)
 		defer rows.Close()
 		var itemsToInsert [][]interface{}
 		for rows.Next() {
-			var name, desc, qty, unit, discType string
+			var itemType, name, desc, qty, unit, discType string
 			var uPrice, discVal, tRate, tAmt, lTotal int64
 			var printFilID sql.NullString
 			var printGrams, printHours sql.NullString
 			var pFilCost, pFilProfPct, pTimeRate, pTimeCost, pLab, pElec, pPost, pPkg, pShip, pFail, pMult, pProd sql.NullInt64
 
 			err := rows.Scan(
-				&name, &desc, &qty, &unit, &uPrice, &discType, &discVal, &tRate, &tAmt, &lTotal,
+				&itemType, &name, &desc, &qty, &unit, &uPrice, &discType, &discVal, &tRate, &tAmt, &lTotal,
 				&printFilID, &printGrams, &pFilCost, &pFilProfPct, &printHours, &pTimeRate,
 				&pTimeCost, &pLab, &pElec, &pPost, &pPkg, &pShip, &pFail, &pMult, &pProd,
 			)
@@ -353,7 +356,7 @@ func (h *QuotesHandler) ConvertToInvoice(w http.ResponseWriter, r *http.Request)
 			if err == nil {
 				newLIID := db.NewULID()
 				itemsToInsert = append(itemsToInsert, []interface{}{
-					newLIID, tenant.ID, invoiceID, name, desc, qty, unit, uPrice, discType, discVal, tRate, tAmt, lTotal,
+					newLIID, tenant.ID, invoiceID, itemType, name, desc, qty, unit, uPrice, discType, discVal, tRate, tAmt, lTotal,
 					printFilID.String, printGrams.String, pFilCost.Int64, pFilProfPct.Int64, printHours.String, pTimeRate.Int64,
 					pTimeCost.Int64, pLab.Int64, pElec.Int64, pPost.Int64, pPkg.Int64, pShip.Int64, pFail.Int64, pMult.Int64, pProd.Int64,
 				})
@@ -369,7 +372,7 @@ func (h *QuotesHandler) ConvertToInvoice(w http.ResponseWriter, r *http.Request)
 					print_time_cost, print_labour_cost, print_electricity_cost, print_postproc_cost, print_packaging_cost,
 					print_shipping_cost, print_failure_rate, print_profit_multiplier, print_production_cost, created_at, updated_at
 				) VALUES (
-					?, ?, 'invoice', ?, 0, 'custom', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+					?, ?, 'invoice', ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
 					NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, 0), NULLIF(?, 0), NULLIF(?, ''), NULLIF(?, 0),
 					NULLIF(?, 0), NULLIF(?, 0), NULLIF(?, 0), NULLIF(?, 0), NULLIF(?, 0),
 					NULLIF(?, 0), NULLIF(?, 0), NULLIF(?, 0), NULLIF(?, 0), ?, ?
@@ -436,6 +439,7 @@ func (h *QuotesHandler) AddCustomRow(w http.ResponseWriter, r *http.Request) {
 		"Unit":             "pcs",
 		"UnitPriceDisplay": "0.00",
 		"LineTotalDisplay": "0.00",
+		"ParentType":       "quotes",
 	}
 
 	RenderPartial(w, r, h.app.TemplatesFS, "templates/invoices/partials/line_item_row.html", "line_item_row", data)
@@ -457,9 +461,13 @@ func (h *QuotesHandler) UpdateRow(w http.ResponseWriter, r *http.Request) {
 	desc := r.FormValue("description")
 	unit := r.FormValue("unit")
 
-	qty, _ := strconv.ParseFloat(qtyStr, 64)
+	qtyFloat, _ := strconv.ParseFloat(qtyStr, 64)
+	qty := calculator.RoundHalfUp(qtyFloat)
+	if qty < 1 {
+		qty = 1
+	}
 	priceMoney, _ := money.Parse(priceStr, "PKR")
-	lineTotal := calculator.RoundHalfUp(qty * float64(priceMoney.Amount))
+	lineTotal := qty * priceMoney.Amount
 
 	query := `
 		UPDATE line_items SET
@@ -467,7 +475,7 @@ func (h *QuotesHandler) UpdateRow(w http.ResponseWriter, r *http.Request) {
 		WHERE tenant_id = ? AND parent_type = 'quote' AND parent_id = ? AND id = ?
 	`
 	_, err := h.app.DB.ExecContext(r.Context(), query,
-		name, desc, fmt.Sprintf("%.2f", qty), unit, priceMoney.Amount, lineTotal, time.Now().Format(time.RFC3339),
+		name, desc, fmt.Sprintf("%d", qty), unit, priceMoney.Amount, lineTotal, time.Now().Format(time.RFC3339),
 		tenant.ID, quoteID, liID,
 	)
 
@@ -623,11 +631,16 @@ func (h *QuotesHandler) AddPrintItem(w http.ResponseWriter, r *http.Request) {
 	failureRate, _ := strconv.ParseInt(failStr, 10, 64)
 	profitMultiplier, _ := strconv.ParseInt(multStr, 10, 64)
 
+	// Fetch filament cost per gram and details
 	var costPerGram int64
+	var filName, filBrand, filMaterial string
 	_ = h.app.DB.QueryRowContext(r.Context(), `
-		SELECT cost_per_gram FROM filament_profiles WHERE tenant_id = ? AND id = ?
-	`, tenant.ID, filamentID).Scan(&costPerGram)
+		SELECT cost_per_gram, name, COALESCE(brand, ''), material 
+		FROM filament_profiles 
+		WHERE tenant_id = ? AND id = ?
+	`, tenant.ID, filamentID).Scan(&costPerGram, &filName, &filBrand, &filMaterial)
 
+	// Calculate cost
 	calcIn := calculator.PrintJobInputs{
 		Grams:             grams,
 		CostPerGram:       costPerGram,
@@ -644,6 +657,44 @@ func (h *QuotesHandler) AddPrintItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res := calculator.Calculate(calcIn)
+
+	// Build dynamic rich sub-description
+	richDesc := ""
+	if description != "" {
+		richDesc += description + "\n"
+	}
+	filInfo := filName
+	if filBrand != "" {
+		filInfo = filBrand + " " + filInfo
+	}
+	if filMaterial != "" {
+		filInfo = filInfo + " (" + filMaterial + ")"
+	}
+	richDesc += fmt.Sprintf("• Filament: %s [%.2fg used]\n", filInfo, grams)
+	richDesc += fmt.Sprintf("• Print Time: %.1f hours (Rate: Rs %.2f/hr)\n", hours, float64(timeRate.Amount)/100.0)
+
+	var overheads []string
+	if labour.Amount > 0 {
+		overheads = append(overheads, fmt.Sprintf("Labor (Rs %.2f)", float64(labour.Amount)/100.0))
+	}
+	if electricity.Amount > 0 {
+		overheads = append(overheads, fmt.Sprintf("Electricity (Rs %.2f)", float64(electricity.Amount)/100.0))
+	}
+	if postproc.Amount > 0 {
+		overheads = append(overheads, fmt.Sprintf("Post-processing (Rs %.2f)", float64(postproc.Amount)/100.0))
+	}
+	if packaging.Amount > 0 {
+		overheads = append(overheads, fmt.Sprintf("Packaging (Rs %.2f)", float64(packaging.Amount)/100.0))
+	}
+	if shipping.Amount > 0 {
+		overheads = append(overheads, fmt.Sprintf("Shipping (Rs %.2f)", float64(shipping.Amount)/100.0))
+	}
+
+	if len(overheads) > 0 {
+		richDesc += "• Overheads: " + strings.Join(overheads, ", ")
+	} else {
+		richDesc = strings.TrimSuffix(richDesc, "\n")
+	}
 
 	id := db.NewULID()
 	now := time.Now().Format(time.RFC3339)
@@ -667,7 +718,7 @@ func (h *QuotesHandler) AddPrintItem(w http.ResponseWriter, r *http.Request) {
 	`
 
 	_, err := h.app.DB.ExecContext(r.Context(), query,
-		id, tenant.ID, quoteID, name, description,
+		id, tenant.ID, quoteID, name, richDesc,
 		res.FinalPrice, res.FinalPrice,
 		filamentID, fmt.Sprintf("%.2f", grams), res.RawFilamentCost, filamentProfitPct,
 		fmt.Sprintf("%.1f", hours), timeRate.Amount, res.TimeCost, labour.Amount, electricity.Amount,
@@ -688,11 +739,12 @@ func (h *QuotesHandler) AddPrintItem(w http.ResponseWriter, r *http.Request) {
 		"ID":               id,
 		"InvoiceID":        quoteID,
 		"Name":             name,
-		"Description":      description,
+		"Description":      richDesc,
 		"Quantity":         "1",
 		"Unit":             "pcs",
 		"UnitPriceDisplay": money.FormatAmount(res.FinalPrice),
 		"LineTotalDisplay": money.FormatAmount(res.FinalPrice),
+		"ParentType":       "quotes",
 	}
 
 	RenderPartial(w, r, h.app.TemplatesFS, "templates/invoices/partials/line_item_row.html", "line_item_row", data)
@@ -827,14 +879,14 @@ func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
 			rows.Scan(&li.Name, &li.Description, &qtyStr, &li.Unit, &li.UnitPrice, &li.LineTotal)
 			
 			qty, _ := strconv.ParseFloat(qtyStr, 64)
-			li.Quantity = fmt.Sprintf("%.2f", qty)
-			if strings.HasSuffix(li.Quantity, ".00") {
-				li.Quantity = li.Quantity[:len(li.Quantity)-3]
-			}
+			li.Quantity = fmt.Sprintf("%d", calculator.RoundHalfUp(qty))
 			
 			items = append(items, li)
 		}
 	}
+
+	companyLogo := h.getSetting(ctx, tenant.ID, "company_logo", "")
+	browserPath := h.getSetting(ctx, tenant.ID, "pdf_browser_path", "")
 
 	doc := pdf.PDFDocument{
 		Title:           "QUOTE",
@@ -842,6 +894,7 @@ func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
 		IssueDate:       issueDate,
 		ExpiryOrDueDate: expiryDate,
 		Currency:        currency,
+		CompanyLogo:     companyLogo,
 		SellerName:      sellerName,
 		SellerAddress:   sellerAddress,
 		SellerContact:   sellerContact,
@@ -859,7 +912,7 @@ func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
 		Terms:           terms,
 	}
 
-	pdfBytes, err := pdf.Generate(doc)
+	pdfBytes, err := pdf.Generate(doc, browserPath)
 	if err != nil {
 		http.Error(w, "Failed to generate PDF: "+err.Error(), http.StatusInternalServerError)
 		return

@@ -132,6 +132,7 @@ func WireRoutes(a *app.App, staticFS embed.FS) *chi.Mux {
 			r.Post("/", setH.SaveCompany)
 			r.Get("/email", setH.ShowEmail)
 			r.Post("/email", setH.SaveEmail)
+			r.Post("/email/test", setH.TestEmail)
 		})
 
 		r.Route("/system", func(r chi.Router) {

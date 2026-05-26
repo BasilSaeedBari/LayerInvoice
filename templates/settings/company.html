@@ -14,7 +14,7 @@
   <a href="/settings/email" class="li-btn li-btn--secondary" style="margin-left: var(--space-2);">✉ SMTP Mailer Config</a>
 </div>
 
-<form action="/settings" method="POST">
+<form action="/settings" method="POST" enctype="multipart/form-data">
   <article class="li-card">
     <div class="li-card__header">
       <h2>Company Contact Information</h2>
@@ -46,6 +46,26 @@
 
   <article class="li-card">
     <div class="li-card__header">
+      <h2>Company Logo</h2>
+    </div>
+
+    <div class="li-form-row" style="align-items: center;">
+      <label>Upload Logo Image
+        <input type="file" name="company_logo" accept="image/*">
+        <small style="color: var(--color-text-secondary);">Upload a square or wide branded logo for your invoices and quotes.</small>
+      </label>
+      <div style="text-align: center; border: 1px dashed var(--color-border); padding: var(--space-4); border-radius: 8px; min-height: 100px; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface-alt);">
+        {{if .Data.CompanyLogo}}
+          <img src="{{safeURL .Data.CompanyLogo}}" alt="Company Logo" style="max-height: 80px; max-width: 100%; object-fit: contain;">
+        {{else}}
+          <span style="color: var(--color-text-muted);">No logo uploaded yet</span>
+        {{end}}
+      </div>
+    </div>
+  </article>
+
+  <article class="li-card">
+    <div class="li-card__header">
       <h2>Physical Business Address</h2>
     </div>
 
@@ -71,6 +91,7 @@
       </label>
     </div>
   </article>
+
 
   <div style="display: flex; justify-content: flex-end; margin-top: var(--space-6);">
     <button type="submit" class="li-btn li-btn--primary">

@@ -219,6 +219,55 @@ If you want to run the project from source or make modifications:
 
 ---
 
+## 🛠️ Modifying Invoices and Quotes Templates
+
+If you wish to customize the visual layouts, formatting, or styling of quotes and invoices, you can do so in the following files:
+
+### 1. Web / Screen Editors
+The interactive invoice and quote pages shown inside your browser are standard Go templates styled with custom CSS:
+* **Invoice Editor**: `templates/invoices/show.html` (Controls the main layout and includes the 3D Print Calculator modal).
+* **Quote Editor**: `templates/quotes/show.html` (Controls the quote estimation screen and its calculator modal).
+* **Line Item Rows**: `templates/invoices/partials/line_item_row.html` (The HTMX inline editor row for single products).
+* **Totals Panel**: `templates/invoices/partials/totals.html` (Handles interactive subtotal, discount, and tax calculations).
+
+### 2. PDF Document Output
+The generated PDF files sent via email or downloaded by users are compiled programmatically using **`go-pdf/fpdf`** for high performance and page accuracy:
+* **PDF Engine**: `internal/pdf/pdf.go`
+  * Modify fonts, sizes, table column widths, colors, and margins (defaults to 0.75-inch).
+  * Adjust cell heights and page numbering blocks dynamically.
+
+---
+
+## 🚀 Integration Features Implementation Roadmap
+
+Here is the exact status of implemented and planned integration features within the LayerInvoice system:
+
+### 🟢 Fully Implemented & Operational
+- **Interactive 3D Print Cost Estimator & Calculator**: In-browser calculation of filament weight, print time, electricity, failure rates, post-processing, and packaging with standard dynamic forms.
+- **Pure-Go gofpdf Vector PDF Printer**: 100% browser-less, fast, programmatic vector A4 PDF compiler with custom corner geometric accents, alternating grids, and multi-page overflow page-splitting.
+- **Dynamic Company Profile & Logo Upload**: Support for standard and wide corporate logos stored as base64 data URLs in SQLite, featuring zero-filesystem storage and live browser previews with anti-XSS bypassing (`safeURL`).
+- **Dynamic Top-Bar Branded Header**: Dynamic corporate logo display centered in the sticky main app header for premium UI customization.
+- **Robust Asynchronous SMTP Mailer**: Auto-email PDF dispatches upon invoice validation with a 5-second silence period (debouncer key). Saves detailed status logs dynamically to `email_log` database table.
+- **Real-time SMTP Connection Tester**: HTMX-driven Outbound mail checker directly inside the SMTP server config screen that provides immediate visual diagnostic feedback and prints errors to the debug console.
+- **Multi-tenant SQLite database in WAL-mode**: Zero-configuration DB stack with Goose migrations.
+
+### 🟡 Planned / Future Roadmap (Left to Implement)
+- **Third-Party Payment Gateways**: Direct online client payments through Stripe, PayPal, JazzCash, and EasyPaisa integrations (currently payments are logged manually).
+- **Recurring Invoice Automations**: Dynamic Cron-driven billing engine that auto-generates and sends invoices (schema is ready, but scheduling logic is mock/partially automated).
+- **Advanced Cloud Storage Backends**: Option to persist generated PDFs or logos directly in AWS S3, Google Cloud Storage, or MinIO instead of SQLite base64 blobs.
+- **Interactive CRM Client Portal**: A secure dedicated dashboard where clients can log in, view historical estimates/invoices, download PDFs, and pay directly.
+- **Accounting & Tax Reporting**: Exporting quarterly ledgers, tax returns (VAT/GST basis points summaries), and business expenses charts.
+
+---
+
+## 📊 Codebase Architecture & Flow
+
+LayerInvoice follows a highly modular design tailored for reactive server-side HTML rendering. To explore the structure:
+* **Mermaid Architecture Diagram**: See [docs/architecture_diagram.mermaid](docs/architecture_diagram.mermaid) (renders directly in GitHub).
+* **Comprehensive Codebase Reference**: See [docs/codebase_documentation.md](docs/codebase_documentation.md) for a detailed file-by-file manual outlining every function, struct, input, and output parameter.
+
+---
+
 ## 🛡️ License
 
-This project is licensed under the AGPL [But I havent decided yet] License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

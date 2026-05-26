@@ -1,24 +1,24 @@
 <tr id="li-row-{{.ID}}">
   <td>
     <input type="text" name="name" value="{{.Name}}" placeholder="Service or product name"
-           hx-post="/invoices/{{.InvoiceID}}/line-items/{{.ID}}/update" hx-trigger="keyup changed delay:500ms" hx-include="closest tr">
+           hx-post="/{{if .ParentType}}{{.ParentType}}{{else}}invoices{{end}}/{{.InvoiceID}}/line-items/{{.ID}}/update" hx-trigger="keyup changed delay:500ms" hx-include="closest tr">
     <input type="text" name="description" value="{{.Description}}" placeholder="Additional details (optional)" style="font-size: var(--text-small); margin-top: 4px;"
-           hx-post="/invoices/{{.InvoiceID}}/line-items/{{.ID}}/update" hx-trigger="keyup changed delay:500ms" hx-include="closest tr">
+           hx-post="/{{if .ParentType}}{{.ParentType}}{{else}}invoices{{end}}/{{.InvoiceID}}/line-items/{{.ID}}/update" hx-trigger="keyup changed delay:500ms" hx-include="closest tr">
   </td>
   
   <td style="width: 100px;">
-    <input type="number" name="qty" value="{{.Quantity}}" step="0.01" min="0" placeholder="1"
-           hx-post="/invoices/{{.InvoiceID}}/line-items/{{.ID}}/update" hx-target="#li-total-{{.ID}}" hx-trigger="keyup changed delay:500ms, change" hx-include="closest tr">
+    <input type="number" name="qty" value="{{.Quantity}}" step="1" min="0" placeholder="1"
+           hx-post="/{{if .ParentType}}{{.ParentType}}{{else}}invoices{{end}}/{{.InvoiceID}}/line-items/{{.ID}}/update" hx-target="#li-total-{{.ID}}" hx-trigger="keyup changed delay:500ms, change" hx-include="closest tr">
   </td>
   
   <td style="width: 80px;">
     <input type="text" name="unit" value="{{.Unit}}" placeholder="pcs"
-           hx-post="/invoices/{{.InvoiceID}}/line-items/{{.ID}}/update" hx-trigger="keyup changed delay:500ms" hx-include="closest tr">
+           hx-post="/{{if .ParentType}}{{.ParentType}}{{else}}invoices{{end}}/{{.InvoiceID}}/line-items/{{.ID}}/update" hx-trigger="keyup changed delay:500ms" hx-include="closest tr">
   </td>
   
   <td style="width: 150px;">
     <input type="text" name="unit_price" value="{{.UnitPriceDisplay}}" placeholder="0.00" class="li-col-right"
-           hx-post="/invoices/{{.InvoiceID}}/line-items/{{.ID}}/update" hx-target="#li-total-{{.ID}}" hx-trigger="keyup changed delay:500ms, change" hx-include="closest tr">
+           hx-post="/{{if .ParentType}}{{.ParentType}}{{else}}invoices{{end}}/{{.InvoiceID}}/line-items/{{.ID}}/update" hx-target="#li-total-{{.ID}}" hx-trigger="keyup changed delay:500ms, change" hx-include="closest tr">
   </td>
   
   <td class="li-col-right li-money" style="font-weight: 700;" id="li-total-{{.ID}}">
@@ -27,7 +27,7 @@
   
   <td class="li-col-center" style="width: 50px;">
     <button class="li-btn li-btn--ghost li-btn--sm" style="color: var(--color-error) !important;"
-            hx-delete="/invoices/{{.InvoiceID}}/line-items/{{.ID}}"
+            hx-delete="/{{if .ParentType}}{{.ParentType}}{{else}}invoices{{end}}/{{.InvoiceID}}/line-items/{{.ID}}"
             hx-target="#li-row-{{.ID}}" hx-swap="outerHTML"
             hx-confirm="Are you sure you want to delete this item?">
       ✕
