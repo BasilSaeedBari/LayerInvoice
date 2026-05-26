@@ -1,10 +1,58 @@
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/BasilSaeedBari/LayerInvoice/main/.github/assets/banner.png" alt="LayerInvoice" width="100%" />
+
 # LayerInvoice 🚀
 
-[![Build and Publish Docker Image](https://github.com/BasilSaeed/LayerInvoice/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/BasilSaeed/LayerInvoice/actions/workflows/docker-publish.yml)
-[![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8.svg?style=flat&logo=go)](https://go.dev)
-[![Database](https://img.shields.io/badge/Database-SQLite-003B57.svg?style=flat&logo=sqlite)](https://sqlite.org)
-[![HTMX](https://img.shields.io/badge/HTMX-%E2%9A%A1%20Reactive-blue)](https://htmx.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+**The self-hosted CRM, ERP, and invoicing platform for 3D printing businesses, makerspaces, and engineering freelancers.**
+
+Create professional quotes and invoices, manage clients, estimate 3D printing costs, and run your fabrication business from one sleek, document-first platform.
+
+<p>
+  <a href="https://github.com/BasilSaeedBari/LayerInvoice/blob/main/LICENSE">
+    <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square" />
+  </a>
+
+  <a href="https://github.com/BasilSaeedBari/LayerInvoice/actions/workflows/docker-publish.yml">
+    <img alt="Docker Build" src="https://github.com/BasilSaeedBari/LayerInvoice/actions/workflows/docker-publish.yml/badge.svg" />
+  </a>
+
+  <a href="https://go.dev/">
+    <img alt="Go 1.26+" src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go&logoColor=white" />
+  </a>
+
+  <a href="https://sqlite.org/">
+    <img alt="SQLite" src="https://img.shields.io/badge/database-SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white" />
+  </a>
+
+  <a href="https://htmx.org/">
+    <img alt="HTMX" src="https://img.shields.io/badge/HTMX-reactive-3366CC?style=flat-square" />
+  </a>
+
+  <a href="https://github.com/BasilSaeedBari/LayerInvoice/stargazers">
+    <img alt="GitHub Stars" src="https://img.shields.io/github/stars/BasilSaeedBari/LayerInvoice?style=flat-square" />
+  </a>
+</p>
+
+<p>
+  <a href="https://github.com/BasilSaeedBari/LayerInvoice/pkgs/container/layerinvoice">
+    <img src="https://img.shields.io/badge/Self--Host-Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Self-Host with Docker" />
+  </a>
+
+  <a href="https://github.com/BasilSaeedBari/LayerInvoice">
+    <img src="https://img.shields.io/badge/Star-on%20GitHub-181717?style=for-the-badge&logo=github" alt="Star on GitHub" />
+  </a>
+
+  <a href="https://github.com/BasilSaeedBari/LayerInvoice/issues">
+    <img src="https://img.shields.io/badge/Contributions-Welcome-orange?style=for-the-badge" alt="Contributions Welcome" />
+  </a>
+</p>
+
+<img src="https://raw.githubusercontent.com/BasilSaeedBari/LayerInvoice/main/.github/assets/dashboard.png" alt="LayerInvoice Dashboard" width="100%" />
+
+</div>
+
+---
 
 **LayerInvoice** is a premium, self-hosted, multi-tenant CRM, ERP, and professional Invoice/Estimate builder purpose-built for **3D Printing Service Shops, makerspaces, and engineering freelancers**. It merges sleek document-centric design with powerful automation, database persistence, and an advanced 3D printing cost estimator.
 
@@ -12,7 +60,7 @@
 
 ## 🎨 Inspiration & Appreciation
 
-LayerInvoice is heavily inspired by the visual design and document-centric layout of **[SimpleInvoice](https://github.com/RihanArfan/SimpleInvoice)**. We express our sincere appreciation to the SimpleInvoice creators; their layout served as the benchmark for designing a clean, high-contrast, premium, paper-like document editor. LayerInvoice builds upon that gorgeous document-first philosophy and extends it into a complete, Go-native CRM/ERP geared toward 3D fabrication.
+LayerInvoice is heavily inspired by the visual design and document-centric layout of **[SimpleInvoice](https://github.com/SolidInvoice/SolidInvoice)**. We express our sincere appreciation to the SimpleInvoice creators; their layout served as the benchmark for designing a clean, high-contrast, premium, paper-like document editor. LayerInvoice builds upon that gorgeous document-first philosophy and extends it into a complete, Go-native CRM/ERP geared toward 3D fabrication.
 
 ---
 
@@ -173,4 +221,4 @@ If you want to run the project from source or make modifications:
 
 ## 🛡️ License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the AGPL [But I havent decided yet] License - see the [LICENSE](LICENSE) file for details.
