@@ -264,6 +264,7 @@ Here is the exact status of implemented and planned integration features within 
 
 LayerInvoice follows a highly modular design tailored for reactive server-side HTML rendering. To explore the structure:
 * **Mermaid Architecture Diagram**: See [docs/architecture_diagram.mermaid](docs/architecture_diagram.mermaid) (renders directly in GitHub).
+* **Mermaid Architecture Diagram**: See [docs/architecture.md](docs/architecture.md)
 * **Comprehensive Codebase Reference**: See [docs/codebase_documentation.md](docs/codebase_documentation.md) for a detailed file-by-file manual outlining every function, struct, input, and output parameter.
 
 ---
