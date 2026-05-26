@@ -1,0 +1,57 @@
+{{define "content"}}
+<div class="li-auth-card__header">
+  <div class="li-auth-card__logo">🖨</div>
+  <h1 class="li-auth-card__title">LayerInvoice Setup</h1>
+  <p class="li-auth-card__sub">Bootstrap your self-hosted 3D printing service billing server</p>
+</div>
+
+<form action="/setup" method="POST">
+  <!-- Section 1: Business Info -->
+  <div style="margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-4);">
+    <h3 style="font-size: var(--text-subheading); font-weight: 700; margin-bottom: var(--space-3); color: var(--color-text-primary);">
+      1. Business Details
+    </h3>
+    
+    <div>
+      <label for="company_name">Company / Shop Name *</label>
+      <input type="text" id="company_name" name="company_name" placeholder="LayerPrint Service Shop" required>
+    </div>
+    
+    <div style="margin-top: var(--space-3);">
+      <label for="company_slug">Shop Directory URL Slug *</label>
+      <input type="text" id="company_slug" name="company_slug" placeholder="layerprint" required>
+      <small style="color: var(--color-text-secondary);">e.g. "layerprint" (lowercase, unique URL prefix)</small>
+    </div>
+  </div>
+
+  <!-- Section 2: Administrator Info -->
+  <div style="margin-bottom: var(--space-5);">
+    <h3 style="font-size: var(--text-subheading); font-weight: 700; margin-bottom: var(--space-3); color: var(--color-text-primary);">
+      2. Administrator Owner Account
+    </h3>
+
+    <div>
+      <label for="admin_name">Owner Operator Name *</label>
+      <input type="text" id="admin_name" name="admin_name" placeholder="Basil Saeed" required>
+    </div>
+
+    <div style="margin-top: var(--space-3);">
+      <label for="admin_email">Primary Email Address *</label>
+      <input type="email" id="admin_email" name="admin_email" placeholder="basil@example.com" required autocomplete="username">
+    </div>
+
+    <div style="margin-top: var(--space-3);">
+      <label for="password">Security Password *</label>
+      <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="new-password">
+    </div>
+  </div>
+
+  <button type="submit" class="li-btn li-btn--primary" style="width: 100%; margin-top: var(--space-4);">
+    🚀 Bootstrap Server & Log In
+  </button>
+</form>
+
+<div style="text-align: center; margin-top: var(--space-5); font-size: var(--text-small); color: var(--color-text-secondary);">
+  By continuing, you initialize a local SQLite instance on your VPS storage volumes.
+</div>
+{{end}}

@@ -1,0 +1,63 @@
+{{define "content"}}
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">Settings</h1>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      Configure company details, logo, local currency, and SMTP server protocols
+    </p>
+  </div>
+</div>
+
+<!-- Settings Tab Navigation -->
+<div style="margin-bottom: var(--space-6);">
+  <a href="/settings" class="li-btn li-btn--secondary">🏢 Company Profile</a>
+  <a href="/settings/email" class="li-btn li-btn--primary" style="margin-left: var(--space-2);">✉ SMTP Mailer Config</a>
+</div>
+
+<form action="/settings/email" method="POST">
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>SMTP Server Configurations</h2>
+    </div>
+
+    <div class="li-form-row">
+      <label>SMTP Host Server *
+        <input type="text" name="smtp_host" value="{{.Data.SMTPHost}}" placeholder="smtp.gmail.com" required>
+      </label>
+      <label>SMTP Port Number *
+        <input type="number" name="smtp_port" value="{{.Data.SMTPPort}}" placeholder="587" required>
+      </label>
+    </div>
+
+    <div class="li-form-row">
+      <label>SMTP Account Username *
+        <input type="text" name="smtp_user" value="{{.Data.SMTPUser}}" placeholder="operator@gmail.com" required>
+      </label>
+      <label>SMTP Password (invisible) *
+        <input type="password" name="smtp_pass" value="{{.Data.SMTPPass}}" placeholder="••••••••••••" required>
+      </label>
+    </div>
+  </article>
+
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Outbound Sender Identity</h2>
+    </div>
+
+    <div class="li-form-row">
+      <label>From Email Address *
+        <input type="email" name="smtp_from_email" value="{{.Data.SMTPFromEmail}}" placeholder="billing@yourcompany.com" required>
+      </label>
+      <label>Sender Display Name *
+        <input type="text" name="smtp_from_name" value="{{.Data.SMTPFromName}}" placeholder="LayerPrint Billing Department" required>
+      </label>
+    </div>
+  </article>
+
+  <div style="display: flex; justify-content: flex-end; margin-top: var(--space-6);">
+    <button type="submit" class="li-btn li-btn--primary">
+      Save SMTP Settings
+    </button>
+  </div>
+</form>
+{{end}}

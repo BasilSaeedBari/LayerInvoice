@@ -1,0 +1,60 @@
+{{define "content"}}
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">Create New Invoice</h1>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      Select a client and configure dates to launch the itemized draft editor
+    </p>
+  </div>
+  <div class="li-card__actions">
+    <a href="/invoices" class="li-btn li-btn--secondary">Cancel</a>
+  </div>
+</div>
+
+<form action="/invoices" method="POST" style="max-width: 600px; margin: 0 auto;">
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Invoice Core Parameters</h2>
+    </div>
+
+    <div style="margin-bottom: var(--space-4);">
+      <label for="client_id">Select Customer *</label>
+      <select id="client_id" name="client_id" required>
+        <option value="" disabled {{if not .Data.PrefillClientID}}selected{{end}}>-- Select Client --</option>
+        {{range .Data.Clients}}
+        <option value="{{.ID}}" {{if eq .ID $.Data.PrefillClientID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+    </div>
+
+    <div class="li-form-row">
+      <label for="invoice_number">Invoice Tracking # *
+        <input type="text" id="invoice_number" name="invoice_number" value="{{.Data.NextNumber}}" required>
+      </label>
+      <label for="currency">Primary Currency
+        <select id="currency" name="currency">
+          <option value="PKR" selected>PKR (Rs)</option>
+          <option value="USD">USD ($)</option>
+          <option value="EUR">EUR (€)</option>
+          <option value="GBP">GBP (£)</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="li-form-row">
+      <label for="issue_date">Issue Date *
+        <input type="date" id="issue_date" name="issue_date" value="{{.Data.Today}}" required>
+      </label>
+      <label for="due_date">Due Date *
+        <input type="date" id="due_date" name="due_date" value="{{.Data.DueDate}}" required>
+      </label>
+    </div>
+  </article>
+
+  <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6);">
+    <button type="submit" class="li-btn li-btn--primary">
+      Start Draft Editor ➡️
+    </button>
+  </div>
+</form>
+{{end}}

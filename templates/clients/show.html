@@ -1,0 +1,255 @@
+{{define "content"}}
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <div style="display: flex; align-items: center; gap: var(--space-3);">
+      <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">
+        {{if .Data.Client.CompanyName}}{{.Data.Client.CompanyName}}{{else}}{{.Data.Client.ContactName}}{{end}}
+      </h1>
+      {{if .Data.Client.CompanyName}}
+      <span class="li-badge li-badge--draft" style="font-weight: 600;">{{.Data.Client.Category}}</span>
+      {{end}}
+    </div>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      👤 Contact: {{.Data.Client.ContactName}} | Member since 05/2026
+    </p>
+  </div>
+  <div class="li-card__actions" style="display: flex; align-items: center; gap: var(--space-2);">
+    <a href="/clients/{{.Data.Client.ID}}/edit" class="li-btn li-btn--secondary">⚙ Edit Client</a>
+    <a href="/invoices/new?client_id={{.Data.Client.ID}}" class="li-btn li-btn--primary">📄 New Invoice</a>
+    <a href="/quotes/new?client_id={{.Data.Client.ID}}" class="li-btn li-btn--secondary">📋 New Quote</a>
+    <form action="/clients/{{.Data.Client.ID}}/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this client profile?');">
+      <button type="submit" class="li-btn li-btn--danger">✕ Delete Client</button>
+    </form>
+  </div>
+</div>
+
+<!-- Ledger Summary Performance Stats Grid -->
+<div class="li-stat-grid">
+  <div class="li-stat-card">
+    <p class="li-stat-card__label">Total Income Generated</p>
+    <p class="li-stat-card__value" style="color: var(--color-status-paid);">
+      {{formatMoney .Data.PaidTotal "PKR"}}
+    </p>
+    <p class="li-stat-card__sub">Billed: {{formatMoney .Data.BilledTotal "PKR"}}</p>
+  </div>
+
+  <div class="li-stat-card">
+    <p class="li-stat-card__label">Outstanding Balance</p>
+    <p class="li-stat-card__value" style="{{if gt .Data.OutstandingTotal 0}}color: var(--color-status-overdue);{{else}}color: var(--color-status-paid);{{end}}">
+      {{formatMoney .Data.OutstandingTotal "PKR"}}
+    </p>
+    <p class="li-stat-card__sub">{{.Data.InvoicesCount}} total invoices ({{.Data.InvoicesPaidCount}} fully paid)</p>
+  </div>
+
+  <div class="li-stat-card">
+    <p class="li-stat-card__label">Total Quotes Drafted</p>
+    <p class="li-stat-card__value" style="color: var(--color-status-sent);">
+      {{.Data.QuotesCount}} quotes
+    </p>
+    <p class="li-stat-card__sub">{{.Data.QuotesAcceptedCount}} quotes accepted by client</p>
+  </div>
+
+  <div class="li-stat-card">
+    <p class="li-stat-card__label">Quote Conversion Rate</p>
+    <p class="li-stat-card__value">
+      {{printf "%.1f" .Data.QuoteConversionRate}}%
+    </p>
+    <p class="li-stat-card__sub">Accepted ratio performance</p>
+  </div>
+</div>
+
+<!-- Contact Info & Addresses Panel -->
+<div class="li-setup-grid">
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Contact Information</h2>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-2);">
+        <span style="font-weight: 600; color: var(--color-text-secondary);">Email Address</span>
+        <span>{{if .Data.Client.Email}}{{.Data.Client.Email}}{{else}}<span style="color: var(--color-text-muted);">None</span>{{end}}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-2);">
+        <span style="font-weight: 600; color: var(--color-text-secondary);">Phone Number</span>
+        <span>{{if .Data.Client.Phone}}{{.Data.Client.Phone}}{{else}}<span style="color: var(--color-text-muted);">None</span>{{end}}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-2);">
+        <span style="font-weight: 600; color: var(--color-text-secondary);">WhatsApp</span>
+        <span>{{if .Data.Whatsapp}}{{.Data.Whatsapp}}{{else}}<span style="color: var(--color-text-muted);">None</span>{{end}}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-2);">
+        <span style="font-weight: 600; color: var(--color-text-secondary);">Website</span>
+        <span>{{if .Data.Website}}<a href="{{.Data.Website}}" target="_blank">{{.Data.Website}}</a>{{else}}<span style="color: var(--color-text-muted);">None</span>{{end}}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding-bottom: var(--space-1);">
+        <span style="font-weight: 600; color: var(--color-text-secondary);">Tax ID / VAT</span>
+        <span>{{if .Data.TaxID}}{{.Data.TaxID}}{{else}}<span style="color: var(--color-text-muted);">None</span>{{end}}</span>
+      </div>
+    </div>
+  </article>
+
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Address Ledger</h2>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+      <div>
+        <div style="font-size: var(--text-micro); font-weight: 700; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 4px;">
+          📍 Billing Address
+        </div>
+        <div style="font-size: var(--text-body); color: var(--color-text-primary);">
+          {{.Data.BillingAddress}}
+        </div>
+      </div>
+      <div style="border-top: 1px solid var(--color-border); padding-top: var(--space-3);">
+        <div style="font-size: var(--text-micro); font-weight: 700; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 4px;">
+          🚚 Shipping Address
+        </div>
+        <div style="font-size: var(--text-body); color: var(--color-text-primary);">
+          {{.Data.ShippingAddress}}
+        </div>
+      </div>
+    </div>
+  </article>
+</div>
+
+<!-- History Tabs Section -->
+<article class="li-card" style="padding: 0;">
+  <div class="li-card__header" style="border-bottom: 1px solid var(--color-border); padding: var(--space-4) var(--space-6); margin-bottom: 0;">
+    <h2>Client Billing History Ledger</h2>
+  </div>
+
+  <div style="padding: var(--space-6);">
+    <!-- Invoices List -->
+    <h3 style="margin-bottom: var(--space-3); font-size: var(--text-subheading); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary);">
+      Invoices ({{len .Data.Invoices}})
+    </h3>
+    {{if .Data.Invoices}}
+    <div class="li-table-wrap" style="margin-bottom: var(--space-6);">
+      <table>
+        <thead>
+          <tr>
+            <th>Invoice #</th>
+            <th>Issue Date</th>
+            <th>Due Date</th>
+            <th class="li-col-right">Total</th>
+            <th class="li-col-right">Balance Due</th>
+            <th>Status</th>
+            <th class="li-col-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Invoices}}
+          <tr>
+            <td>
+              <a href="/invoices/{{.ID}}" style="font-weight: 700; text-decoration: none;">
+                {{.InvoiceNumber}}
+              </a>
+            </td>
+            <td>{{formatDate .IssueDate}}</td>
+            <td>{{formatDate .DueDate}}</td>
+            <td class="li-col-right li-money">{{formatMoney .Total "PKR"}}</td>
+            <td class="li-col-right li-money" style="{{if gt .BalanceDue 0}}color: var(--color-status-overdue);{{end}}">
+              {{formatMoney .BalanceDue "PKR"}}
+            </td>
+            <td><span class="li-badge li-badge--{{lower .Status}}">{{.Status}}</span></td>
+            <td class="li-col-right">
+              <div class="li-col-actions">
+                <a href="/invoices/{{.ID}}" class="li-btn li-btn--ghost li-btn--sm">View</a>
+                <a href="/invoices/{{.ID}}/pdf" class="li-btn li-btn--secondary li-btn--sm" target="_blank">PDF</a>
+              </div>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div style="text-align: center; padding: var(--space-6); border: 1px dashed var(--color-border); border-radius: 8px; color: var(--color-text-secondary); margin-bottom: var(--space-6);">
+      No invoices generated for this client.
+    </div>
+    {{end}}
+
+    <!-- Quotes List -->
+    <h3 style="margin-bottom: var(--space-3); font-size: var(--text-subheading); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary);">
+      Quotes ({{len .Data.Quotes}})
+    </h3>
+    {{if .Data.Quotes}}
+    <div class="li-table-wrap" style="margin-bottom: var(--space-6);">
+      <table>
+        <thead>
+          <tr>
+            <th>Quote #</th>
+            <th>Issue Date</th>
+            <th class="li-col-right">Total</th>
+            <th>Status</th>
+            <th class="li-col-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Quotes}}
+          <tr>
+            <td>
+              <a href="/quotes/{{.ID}}" style="font-weight: 700; text-decoration: none;">
+                {{.QuoteNumber}}
+              </a>
+            </td>
+            <td>{{formatDate .IssueDate}}</td>
+            <td class="li-col-right li-money">{{formatMoney .Total "PKR"}}</td>
+            <td><span class="li-badge li-badge--{{lower .Status}}">{{.Status}}</span></td>
+            <td class="li-col-right">
+              <div class="li-col-actions">
+                <a href="/quotes/{{.ID}}" class="li-btn li-btn--ghost li-btn--sm">View</a>
+                <a href="/quotes/{{.ID}}/pdf" class="li-btn li-btn--secondary li-btn--sm" target="_blank">PDF</a>
+              </div>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div style="text-align: center; padding: var(--space-6); border: 1px dashed var(--color-border); border-radius: 8px; color: var(--color-text-secondary); margin-bottom: var(--space-6);">
+      No quotes drafted for this client.
+    </div>
+    {{end}}
+
+    <!-- Payments Ledger -->
+    <h3 style="margin-bottom: var(--space-3); font-size: var(--text-subheading); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary);">
+      Payments Ledger ({{len .Data.Payments}})
+    </h3>
+    {{if .Data.Payments}}
+    <div class="li-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Transaction ID</th>
+            <th>Date Paid</th>
+            <th>Payment Method</th>
+            <th>Reference Ref</th>
+            <th class="li-col-right">Amount Received</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Payments}}
+          <tr>
+            <td style="font-family: monospace; font-size: var(--text-small);">{{.ID}}</td>
+            <td>{{formatDate .PaidAt}}</td>
+            <td><span style="font-weight: 600;">{{.MethodName}}</span></td>
+            <td>{{if .Ref}}<span style="font-family: monospace;">{{.Ref}}</span>{{else}}<span style="color: var(--color-text-muted);">None</span>{{end}}</td>
+            <td class="li-col-right li-money" style="color: var(--color-status-paid);">
+              +{{formatMoney .Amount .Currency}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div style="text-align: center; padding: var(--space-6); border: 1px dashed var(--color-border); border-radius: 8px; color: var(--color-text-secondary);">
+      No payments recorded for this client.
+    </div>
+    {{end}}
+  </div>
+</article>
+{{end}}

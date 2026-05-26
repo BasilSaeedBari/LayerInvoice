@@ -1,0 +1,81 @@
+{{define "content"}}
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">Settings</h1>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      Configure company details, logo, local currency, and SMTP server protocols
+    </p>
+  </div>
+</div>
+
+<!-- Settings Tab Navigation -->
+<div style="margin-bottom: var(--space-6);">
+  <a href="/settings" class="li-btn li-btn--primary">🏢 Company Profile</a>
+  <a href="/settings/email" class="li-btn li-btn--secondary" style="margin-left: var(--space-2);">✉ SMTP Mailer Config</a>
+</div>
+
+<form action="/settings" method="POST">
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Company Contact Information</h2>
+    </div>
+
+    <div class="li-form-row">
+      <label>Company Name *
+        <input type="text" name="company_name" value="{{.Data.CompanyName}}" required>
+      </label>
+      <label>Primary Currency Symbol
+        <select name="company_currency">
+          <option value="PKR" {{if eq .Data.CompanyCurrency "PKR"}}selected{{end}}>PKR (Rs)</option>
+          <option value="USD" {{if eq .Data.CompanyCurrency "USD"}}selected{{end}}>USD ($)</option>
+          <option value="EUR" {{if eq .Data.CompanyCurrency "EUR"}}selected{{end}}>EUR (€)</option>
+          <option value="GBP" {{if eq .Data.CompanyCurrency "GBP"}}selected{{end}}>GBP (£)</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="li-form-row">
+      <label>Company Public Email
+        <input type="email" name="company_email" value="{{.Data.CompanyEmail}}" placeholder="billing@yourcompany.com">
+      </label>
+      <label>Company Telephone
+        <input type="text" name="company_phone" value="{{.Data.CompanyPhone}}" placeholder="+92 42 3123456">
+      </label>
+    </div>
+  </article>
+
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Physical Business Address</h2>
+    </div>
+
+    <label>Street Address
+      <input type="text" name="company_street" value="{{.Data.CompanyStreet}}" placeholder="45 Main Blvd">
+    </label>
+    
+    <div class="li-form-row">
+      <label>City
+        <input type="text" name="company_city" value="{{.Data.CompanyCity}}" placeholder="Lahore">
+      </label>
+      <label>State / Region
+        <input type="text" name="company_state" value="{{.Data.CompanyState}}" placeholder="Punjab">
+      </label>
+    </div>
+
+    <div class="li-form-row">
+      <label>Zip Code
+        <input type="text" name="company_zip" value="{{.Data.CompanyZip}}" placeholder="54000">
+      </label>
+      <label>Country
+        <input type="text" name="company_country" value="{{.Data.CompanyCountry}}" placeholder="Pakistan">
+      </label>
+    </div>
+  </article>
+
+  <div style="display: flex; justify-content: flex-end; margin-top: var(--space-6);">
+    <button type="submit" class="li-btn li-btn--primary">
+      Save Company Profile
+    </button>
+  </div>
+</form>
+{{end}}

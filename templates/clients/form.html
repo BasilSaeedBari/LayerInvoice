@@ -1,0 +1,142 @@
+{{define "content"}}
+{{$isEdit := .Data.Client}}
+
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">
+      {{if $isEdit}}Edit Client: {{.Data.Client.ContactName}}{{else}}Add New Client{{end}}
+    </h1>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      {{if $isEdit}}Modify customer profile, addresses, and payment terms{{else}}Establish a new customer contact profile and billing settings{{end}}
+    </p>
+  </div>
+  <div class="li-card__actions">
+    <a href="{{if $isEdit}}/clients/{{.Data.Client.ID}}{{else}}/clients{{end}}" class="li-btn li-btn--secondary">Cancel</a>
+  </div>
+</div>
+
+<form action="{{if $isEdit}}/clients/{{.Data.Client.ID}}{{else}}/clients{{end}}" method="POST">
+  
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Primary Client Information</h2>
+    </div>
+    
+    <div class="li-form-row">
+      <label>Contact Name *
+        <input type="text" name="contact_name" value="{{if $isEdit}}{{.Data.Client.ContactName}}{{end}}" placeholder="John Doe" required>
+      </label>
+      <label>Company Name
+        <input type="text" name="company_name" value="{{if $isEdit}}{{.Data.Client.CompanyName}}{{end}}" placeholder="Acme Corporation">
+      </label>
+    </div>
+
+    <div class="li-form-row">
+      <label>Email Address
+        <input type="email" name="email" value="{{if $isEdit}}{{.Data.Client.Email}}{{end}}" placeholder="client@example.com">
+      </label>
+      <label>Phone Number
+        <input type="text" name="phone" value="{{if $isEdit}}{{.Data.Client.Phone}}{{end}}" placeholder="+92 300 1234567">
+      </label>
+    </div>
+
+    <div class="li-form-row">
+      <label>WhatsApp Number
+        <input type="text" name="whatsapp" value="{{if $isEdit}}{{.Data.Whatsapp}}{{end}}" placeholder="+92 300 1234567">
+      </label>
+      <label>Website
+        <input type="url" name="website" value="{{if $isEdit}}{{.Data.Website}}{{end}}" placeholder="https://example.com">
+      </label>
+    </div>
+
+    <div class="li-form-row">
+      <label>Tax ID / NTN / VAT
+        <input type="text" name="tax_id" value="{{if $isEdit}}{{.Data.TaxID}}{{end}}" placeholder="NTN-1234567">
+      </label>
+      <label>Client Category
+        <input type="text" name="category" value="{{if $isEdit}}{{.Data.Category}}{{end}}" placeholder="Business | Retail | Wholesaler">
+      </label>
+    </div>
+  </article>
+
+  <!-- Billing & Shipping Address Panels -->
+  <div class="li-setup-grid">
+    <article class="li-card">
+      <div class="li-card__header">
+        <h2>Billing Address</h2>
+      </div>
+      <label>Street
+        <input type="text" name="billing_street" value="{{if $isEdit}}{{.Data.BillingStreet}}{{end}}" placeholder="123 Billing St">
+      </label>
+      <div class="li-form-row">
+        <label>City
+          <input type="text" name="billing_city" value="{{if $isEdit}}{{.Data.BillingCity}}{{end}}" placeholder="Lahore">
+        </label>
+        <label>State
+          <input type="text" name="billing_state" value="{{if $isEdit}}{{.Data.BillingState}}{{end}}" placeholder="Punjab">
+        </label>
+      </div>
+      <div class="li-form-row">
+        <label>Zip
+          <input type="text" name="billing_zip" value="{{if $isEdit}}{{.Data.BillingZip}}{{end}}" placeholder="54000">
+        </label>
+        <label>Country
+          <input type="text" name="billing_country" value="{{if $isEdit}}{{.Data.BillingCountry}}{{end}}" placeholder="Pakistan">
+        </label>
+      </div>
+    </article>
+
+    <article class="li-card">
+      <div class="li-card__header">
+        <h2>Shipping Address</h2>
+      </div>
+      <label>Street
+        <input type="text" name="shipping_street" value="{{if $isEdit}}{{.Data.ShippingStreet}}{{end}}" placeholder="456 Shipping St">
+      </label>
+      <div class="li-form-row">
+        <label>City
+          <input type="text" name="shipping_city" value="{{if $isEdit}}{{.Data.ShippingCity}}{{end}}" placeholder="Lahore">
+        </label>
+        <label>State
+          <input type="text" name="shipping_state" value="{{if $isEdit}}{{.Data.ShippingState}}{{end}}" placeholder="Punjab">
+        </label>
+      </div>
+      <div class="li-form-row">
+        <label>Zip
+          <input type="text" name="shipping_zip" value="{{if $isEdit}}{{.Data.ShippingZip}}{{end}}" placeholder="54000">
+        </label>
+        <label>Country
+          <input type="text" name="shipping_country" value="{{if $isEdit}}{{.Data.ShippingCountry}}{{end}}" placeholder="Pakistan">
+        </label>
+      </div>
+    </article>
+  </div>
+
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Defaults & Settings</h2>
+    </div>
+    
+    <div class="li-form-row">
+      <label>Preferred Currency
+        <select name="preferred_currency">
+          <option value="PKR" {{if $isEdit}}{{if eq .Data.PreferredCurrency "PKR"}}selected{{end}}{{else}}selected{{end}}>PKR (Rs)</option>
+          <option value="USD" {{if $isEdit}}{{if eq .Data.PreferredCurrency "USD"}}selected{{end}}{{end}}>USD ($)</option>
+          <option value="EUR" {{if $isEdit}}{{if eq .Data.PreferredCurrency "EUR"}}selected{{end}}{{end}}>EUR (€)</option>
+          <option value="GBP" {{if $isEdit}}{{if eq .Data.PreferredCurrency "GBP"}}selected{{end}}{{end}}>GBP (£)</option>
+        </select>
+      </label>
+      <label>Payment Terms (Days)
+        <input type="number" name="payment_terms_days" value="{{if $isEdit}}{{.Data.PaymentTermsDays}}{{else}}30{{end}}" min="0" placeholder="30">
+      </label>
+    </div>
+  </article>
+
+  <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6);">
+    <button type="submit" class="li-btn li-btn--primary">
+      {{if $isEdit}}Update Client Profile{{else}}Save Client Profile{{end}}
+    </button>
+  </div>
+
+</form>
+{{end}}

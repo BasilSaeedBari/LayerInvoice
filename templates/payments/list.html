@@ -1,0 +1,143 @@
+{{define "content"}}
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">Payments Register</h1>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      Track operational cash flows, receipts history, and configure accepted payment gateways
+    </p>
+  </div>
+</div>
+
+<!-- Recorded Payments Section -->
+<article class="li-card" style="padding: 0;">
+  <div class="li-card__header" style="padding: var(--space-4) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--color-border);">
+    <h2>Paid Invoices Receipts History</h2>
+  </div>
+
+  {{if .Data.Payments}}
+  <div class="li-table-wrap" style="border: none; border-radius: 0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Receipt ID</th>
+          <th>Client Name</th>
+          <th>Invoice #</th>
+          <th>Paid Date</th>
+          <th>Payment Method</th>
+          <th>Ref Reference</th>
+          <th class="li-col-right">Amount Received</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Data.Payments}}
+        <tr>
+          <td style="font-family: monospace; font-size: var(--text-small);">{{.ID}}</td>
+          <td>
+            <span style="font-weight: 700;">{{if .CompanyName}}{{.CompanyName}}{{else}}{{.ClientName}}{{end}}</span>
+          </td>
+          <td>
+            <a href="/invoices/{{.InvoiceID}}" style="font-weight: 600; text-decoration: none;">
+              {{.InvoiceNumber}}
+            </a>
+          </td>
+          <td>{{formatDate .PaidAt}}</td>
+          <td><span style="font-weight: 600;">{{.MethodName}}</span></td>
+          <td>{{if .TransactionRef}}<span style="font-family: monospace;">{{.TransactionRef}}</span>{{else}}<span style="color: var(--color-text-muted);">None</span>{{end}}</td>
+          <td class="li-col-right li-money" style="color: var(--color-status-paid);">
+            +{{formatMoney .Amount .Currency}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div style="text-align: center; padding: var(--space-12); color: var(--color-text-secondary);">
+    <div style="font-size: 2.5rem; margin-bottom: var(--space-4);">💰</div>
+    <h3>No Payments Logged</h3>
+    <p>Logged receipts will show here once you record client payments on outstanding invoices.</p>
+  </div>
+  {{end}}
+</article>
+
+<!-- Bottom Layout: Payment Methods Registry & Add Form -->
+<div class="li-setup-grid">
+  <!-- Active Payment Methods -->
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Accepted Payment Methods</h2>
+    </div>
+    
+    {{if .Data.Methods}}
+    <div class="li-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Method Name</th>
+            <th>Type</th>
+            <th>Details / Info</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Methods}}
+          <tr>
+            <td><span style="font-weight: 700;">{{.Name}}</span></td>
+            <td>
+              <span style="font-size: var(--text-small); font-weight: 600; text-transform: uppercase; background-color: var(--color-surface-alt); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--color-border);">
+                {{.Type}}
+              </span>
+            </td>
+            <td style="font-size: var(--text-small); color: var(--color-text-secondary);">
+              {{if .Details}}{{.Details}}{{else}}<span style="color: var(--color-text-muted);">No account details configured</span>{{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div style="text-align: center; padding: var(--space-6); border: 1px dashed var(--color-border); border-radius: 8px; color: var(--color-text-secondary);">
+      No payment methods defined. Payments will fallback to "Direct Cash".
+    </div>
+    {{end}}
+  </article>
+
+  <!-- Add Payment Method Form -->
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Register Payment Method</h2>
+    </div>
+    
+    <form action="/payment-methods" method="POST">
+      <div class="li-form-row">
+        <label>Method Name *
+          <input type="text" name="name" placeholder="HBL Bank Transfer" required>
+        </label>
+        <label>Method Type *
+          <select name="type" required>
+            <option value="bank_transfer" selected>Bank Transfer</option>
+            <option value="cash">Cash / Offline</option>
+            <option value="jazzcash">JazzCash</option>
+            <option value="easypaisa">EasyPaisa</option>
+            <option value="stripe">Stripe</option>
+            <option value="paypal">PayPal</option>
+            <option value="custom">Other Custom</option>
+          </select>
+        </label>
+      </div>
+
+      <div style="margin-top: var(--space-4);">
+        <label>Account Info / Address Details (visible on invoice)
+          <textarea name="details" placeholder="IBAN: PK12HABB0000012345678901, Account Title: LayerPrint Shop" rows="3"></textarea>
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: var(--space-5);">
+        <button type="submit" class="li-btn li-btn--primary">
+          Register Method Preset
+        </button>
+      </div>
+    </form>
+  </article>
+</div>
+{{end}}

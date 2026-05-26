@@ -1,0 +1,77 @@
+{{define "content"}}
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">Add New Filament</h1>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      Define spool specifications and prices to calculate per-gram cost automatically
+    </p>
+  </div>
+  <div class="li-card__actions">
+    <a href="/filaments" class="li-btn li-btn--secondary">Cancel</a>
+  </div>
+</div>
+
+<form action="/filaments" method="POST">
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Filament Profile Specifications</h2>
+    </div>
+
+    <div class="li-form-row">
+      <label>Profile Name *
+        <input type="text" name="name" placeholder="Prusament PLA Galaxy Black" required>
+      </label>
+      <label>Material Type *
+        <select name="material" required>
+          <option value="PLA" selected>PLA</option>
+          <option value="PETG">PETG</option>
+          <option value="ABS">ABS</option>
+          <option value="TPU">TPU</option>
+          <option value="ASA">ASA</option>
+          <option value="Resin">Resin / Photopolymer</option>
+          <option value="Nylon">Nylon / PA</option>
+          <option value="Other">Other Custom</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="li-form-row">
+      <label>Color / Finish
+        <input type="text" name="color" placeholder="Galaxy Black / Metallic">
+      </label>
+      <label>Brand / Supplier
+        <input type="text" name="brand" placeholder="Prusa Research">
+      </label>
+    </div>
+
+    <div class="li-form-row">
+      <label>Spool Price / Cost *
+        <input type="text" name="spool_cost" placeholder="3250.00" required>
+      </label>
+      <label>Spool Total Weight (grams) *
+        <input type="number" name="spool_weight_g" value="1000" min="1" placeholder="1000" required>
+      </label>
+      <label>Currency
+        <select name="currency">
+          <option value="PKR" selected>PKR (Rs)</option>
+          <option value="USD">USD ($)</option>
+          <option value="EUR">EUR (€)</option>
+          <option value="GBP">GBP (£)</option>
+        </select>
+      </label>
+    </div>
+
+    <div>
+      <label>Internal Notes / Print Profile Info
+        <textarea name="notes" placeholder="Recommended hotend temp: 215C, bed temp: 60C. Stored in drybox." rows="3"></textarea>
+      </label>
+    </div>
+  </article>
+
+  <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6);">
+    <button type="submit" class="li-btn li-btn--primary">
+      Save Filament Profile
+    </button>
+  </div>
+</form>
+{{end}}

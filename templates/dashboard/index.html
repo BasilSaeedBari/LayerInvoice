@@ -1,0 +1,156 @@
+{{define "content"}}
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">Dashboard</h1>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      Overview of your business billing performance and print shop volume
+    </p>
+  </div>
+  <div class="li-card__actions">
+    <a href="/invoices/new" class="li-btn li-btn--primary">📄 New Invoice</a>
+    <a href="/quotes/new" class="li-btn li-btn--secondary">📋 New Quote</a>
+  </div>
+</div>
+
+<!-- Financial Statistics Cards Grid -->
+<div class="li-stat-grid">
+  <div class="li-stat-card">
+    <p class="li-stat-card__label">Revenue This Month</p>
+    <p class="li-stat-card__value">{{formatMoney .Data.RevenueThisMonth "PKR"}}</p>
+    <p class="li-stat-card__sub">Total paid transactions</p>
+  </div>
+  
+  <div class="li-stat-card">
+    <p class="li-stat-card__label">Unpaid Invoices</p>
+    <p class="li-stat-card__value" style="color: var(--color-status-pending);">
+      {{formatMoney .Data.UnpaidInvoicesAmount "PKR"}}
+    </p>
+    <p class="li-stat-card__sub">{{.Data.UnpaidInvoicesCount}} pending billing items</p>
+  </div>
+
+  <div class="li-stat-card">
+    <p class="li-stat-card__label">Overdue Outstanding</p>
+    <p class="li-stat-card__value" style="color: var(--color-status-overdue);">
+      {{formatMoney .Data.OverdueAmount "PKR"}}
+    </p>
+    <p class="li-stat-card__sub">{{.Data.OverdueCount}} overdue invoices</p>
+  </div>
+
+  <div class="li-stat-card">
+    <p class="li-stat-card__label">Pending Quotes</p>
+    <p class="li-stat-card__value" style="color: var(--color-status-sent);">
+      {{formatMoney .Data.PendingQuotesAmount "PKR"}}
+    </p>
+    <p class="li-stat-card__sub">{{.Data.PendingQuotesCount}} quotes awaiting approval</p>
+  </div>
+</div>
+
+<!-- 3D Printing Metrics Panel -->
+<div class="li-card" style="background-color: var(--color-accent-light);">
+  <h3 style="margin-bottom: var(--space-4); font-size: var(--text-subheading); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">
+    Print Shop Volume & Production (This Month)
+  </h3>
+  
+  <div class="li-stat-grid" style="margin-bottom: 0;">
+    <div class="li-stat-card" style="border-style: dashed;">
+      <p class="li-stat-card__label">Print Hours Billed</p>
+      <p class="li-stat-card__value">{{printf "%.1f" .Data.PrintHoursThisMonth}} hrs</p>
+      <p class="li-stat-card__sub">Machine time accounted for</p>
+    </div>
+    
+    <div class="li-stat-card" style="border-style: dashed;">
+      <p class="li-stat-card__label">Filament Weight</p>
+      <p class="li-stat-card__value">{{printf "%.1f" .Data.FilamentGramsThisMonth}} g</p>
+      <p class="li-stat-card__sub">Billed material volume</p>
+    </div>
+
+    <div class="li-stat-card" style="border-style: dashed;">
+      <p class="li-stat-card__label">Filament Preset Choice</p>
+      <p class="li-stat-card__value" style="font-size: 1.15rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        {{.Data.MostUsedFilament}}
+      </p>
+      <p class="li-stat-card__sub">Most frequently ordered filament</p>
+    </div>
+  </div>
+</div>
+
+<div class="li-setup-grid">
+  <!-- Recent Payments Panel -->
+  <article class="li-card">
+    <header class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-3); padding-bottom: 0;">
+      <h3>Recent Payments</h3>
+      <a href="/payments" class="li-btn li-btn--ghost li-btn--sm">View All</a>
+    </header>
+    
+    {{if .Data.RecentPayments}}
+    <div class="li-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Client</th>
+            <th>Date</th>
+            <th class="li-col-right">Paid</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.RecentPayments}}
+          <tr>
+            <td>
+              <span style="font-weight: 600;">{{if .CompanyName}}{{.CompanyName}}{{else}}{{.ContactName}}{{end}}</span>
+            </td>
+            <td>{{formatDate .PaidAt}}</td>
+            <td class="li-col-right li-money" style="color: var(--color-status-paid);">
+              +{{formatMoney .Amount .Currency}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div style="text-align: center; padding: var(--space-8); border: 1px dashed var(--color-border); border-radius: 8px; color: var(--color-text-secondary);">
+      No payment receipts recorded yet.
+    </div>
+    {{end}}
+  </article>
+
+  <!-- Recently Active Clients Panel -->
+  <article class="li-card">
+    <header class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-3); padding-bottom: 0;">
+      <h3>Recent Clients</h3>
+      <a href="/clients" class="li-btn li-btn--ghost li-btn--sm">Manage Clients</a>
+    </header>
+    
+    {{if .Data.ActiveClients}}
+    <div class="li-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Contact Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.ActiveClients}}
+          <tr>
+            <td>
+              <a href="/clients/{{.ID}}" style="font-weight: 600; text-decoration: none;">
+                {{if .CompanyName}}{{.CompanyName}}{{else}}{{.ContactName}}{{end}}
+              </a>
+            </td>
+            <td style="font-size: var(--text-small); color: var(--color-text-secondary);">
+              {{if .Email}}{{.Email}}{{else}}{{.Phone}}{{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div style="text-align: center; padding: var(--space-8); border: 1px dashed var(--color-border); border-radius: 8px; color: var(--color-text-secondary);">
+      No client accounts created yet.
+    </div>
+    {{end}}
+  </article>
+</div>
+{{end}}

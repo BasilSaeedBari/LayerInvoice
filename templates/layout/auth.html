@@ -1,0 +1,39 @@
+{{define "auth-layout"}}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{if .PageTitle}}{{.PageTitle}} — {{end}}LayerInvoice</title>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="/static/css/pico.min.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+  
+  <!-- Javascript Libraries -->
+  <script src="/static/js/htmx.min.js"></script>
+  <script src="/static/js/alpine.min.js" defer></script>
+</head>
+<body class="li-auth-body">
+
+  <main class="li-auth-card">
+    {{template "content" .}}
+  </main>
+
+  <!-- Flash Notifications Box -->
+  <div class="li-flash-container" id="flash-container">
+    {{if .FlashSuccess}}
+    <div class="li-flash li-flash--success" x-data="{show: true}" x-show="show" x-init="setTimeout(() => show = false, 4000)">
+      ✓ {{.FlashSuccess}}
+    </div>
+    {{end}}
+    {{if .FlashError}}
+    <div class="li-flash li-flash--error" x-data="{show: true}" x-show="show" x-init="setTimeout(() => show = false, 4000)">
+      ✗ {{.FlashError}}
+    </div>
+    {{end}}
+  </div>
+
+</body>
+</html>
+{{end}}

@@ -1,0 +1,87 @@
+{{define "content"}}
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">Filament Profiles</h1>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      Register spool details and material prices to power the 3D Print Cost Calculator automatically
+    </p>
+  </div>
+  <div class="li-card__actions">
+    <a href="/filaments/new" class="li-btn li-btn--primary">🧵 Add Filament</a>
+  </div>
+</div>
+
+<article class="li-card" style="padding: 0;">
+  {{if .Data}}
+  <div class="li-table-wrap" style="border: none; border-radius: 0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Filament Details</th>
+          <th>Material & Brand</th>
+          <th>Color</th>
+          <th class="li-col-right">Spool Cost</th>
+          <th class="li-col-right">Spool Weight</th>
+          <th class="li-col-right">Cost Per Gram</th>
+          <th class="li-col-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Data}}
+        <tr id="fil-row-{{.ID}}">
+          <td>
+            <span style="font-weight: 700; color: var(--color-text-primary);">{{.Name}}</span>
+          </td>
+          <td>
+            <span style="font-weight: 600; background-color: var(--color-surface-alt); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--color-border); font-size: var(--text-small);">
+              {{.Material}}
+            </span>
+            {{if .Brand}}
+            <span style="font-size: var(--text-small); color: var(--color-text-secondary); margin-left: 4px;">by {{.Brand}}</span>
+            {{end}}
+          </td>
+          <td>
+            {{if .Color}}
+            <span style="display: inline-flex; align-items: center; gap: var(--space-2);">
+              <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--color-border-strong); background-color: {{lower .Color}};"></span>
+              {{.Color}}
+            </span>
+            {{else}}
+            <span style="color: var(--color-text-muted);">None</span>
+            {{end}}
+          </td>
+          <td class="li-col-right li-money">
+            {{formatMoney .SpoolCost .Currency}}
+          </td>
+          <td class="li-col-right" style="font-variant-numeric: tabular-nums;">
+            {{.SpoolWeightG}}g
+          </td>
+          <td class="li-col-right li-money" style="font-weight: 700; color: var(--color-status-partial);">
+            {{formatMoney .CostPerGram .Currency}}/g
+          </td>
+          <td class="li-col-right">
+            <div class="li-col-actions">
+              <button class="li-btn li-btn--danger li-btn--sm"
+                      hx-delete="/filaments/{{.ID}}"
+                      hx-target="#fil-row-{{.ID}}"
+                      hx-swap="outerHTML"
+                      hx-confirm="Are you sure you want to delete this filament profile? This will not affect existing quotes or invoices.">
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div style="text-align: center; padding: var(--space-12); color: var(--color-text-secondary);">
+    <div style="font-size: 2.5rem; margin-bottom: var(--space-4);">🧵</div>
+    <h3>No Filament Profiles</h3>
+    <p>Define material presets (PLA, ABS, Resin) with their spool prices to automate your print quote calculations.</p>
+    <a href="/filaments/new" class="li-btn li-btn--primary" style="margin-top: var(--space-4);">Add Filament</a>
+  </div>
+  {{end}}
+</article>
+{{end}}

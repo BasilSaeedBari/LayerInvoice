@@ -1,0 +1,37 @@
+<div id="totals-block" 
+     hx-get="/invoices/{{.Data.ID}}/totals" 
+     hx-trigger="recalculate_totals from:body" 
+     hx-swap="outerHTML" 
+     class="li-card" 
+     style="max-width: 400px; margin-left: auto; margin-right: 0; background-color: var(--color-surface-alt);">
+     
+  <div class="li-card__header" style="margin-bottom: var(--space-3); padding-bottom: var(--space-2);">
+    <h3 style="font-size: var(--text-body); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary);">
+      Invoice Financial Totals
+    </h3>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--text-body);">
+    <div style="display: flex; justify-content: space-between;">
+      <span>Subtotal:</span>
+      <span class="li-money">{{formatMoney .Data.Subtotal .Data.Currency}}</span>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; color: var(--color-status-overdue);">
+      <span>Discount:</span>
+      <span class="li-money">-{{formatMoney .Data.DiscountValue .Data.Currency}}</span>
+    </div>
+
+    <div style="display: flex; justify-content: space-between;">
+      <span>Tax ({{printf "%.2f" (divFloat .Data.TaxRate 100)}}%):</span>
+      <span class="li-money">{{formatMoney .Data.TaxAmount .Data.Currency}}</span>
+    </div>
+
+    <div style="border-top: 2px solid var(--color-text-primary); margin-top: var(--space-2); padding-top: var(--space-2); display: flex; justify-content: space-between; font-weight: 700; font-size: var(--text-subheading);">
+      <span>TOTAL DUE:</span>
+      <span class="li-money" style="color: var(--color-text-primary);">
+        {{formatMoney .Data.Total .Data.Currency}}
+      </span>
+    </div>
+  </div>
+</div>

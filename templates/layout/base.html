@@ -1,0 +1,123 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{if .PageTitle}}{{.PageTitle}} — {{end}}LayerInvoice</title>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="/static/css/pico.min.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+  
+  <!-- Javascript Libraries -->
+  <script src="/static/js/htmx.min.js"></script>
+  <script src="/static/js/alpine.min.js" defer></script>
+</head>
+<body>
+  
+  <!-- Top Navigation Header -->
+  <header class="li-top-nav">
+    <a href="/" class="li-top-nav__brand">
+      <span>🖨</span> LayerInvoice
+    </a>
+    
+    <div class="li-top-nav__meta">
+      <!-- Loading indicator -->
+      <span id="global-spinner" class="li-spinner htmx-indicator" aria-hidden="true"></span>
+      
+      {{if .CurrentTenant}}
+      <span class="li-top-nav__tenant-badge">{{.CurrentTenant.Name}}</span>
+      {{end}}
+      
+      {{if .CurrentUser}}
+      <div style="display: flex; align-items: center; gap: var(--space-3);">
+        <span style="font-size: var(--text-small); color: var(--color-text-secondary);">
+          {{.CurrentUser.Name}} ({{.CurrentUser.Role}})
+        </span>
+        <form action="/logout" method="POST" style="margin:0;">
+          <button type="submit" class="li-btn li-btn--ghost li-btn--sm">Logout</button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+  </header>
+
+  <div class="li-app-container">
+    <!-- Left Sidebar Navigation -->
+    <aside class="li-sidebar">
+      <!-- Billing Section -->
+      <div class="li-nav-section">
+        <div class="li-nav-section__label">Billing</div>
+        <a href="/" class="li-nav-item{{if eq .ActiveMenu "dashboard"}} li-nav-item--active{{end}}">
+          ◉ Dashboard
+        </a>
+        <a href="/invoices" class="li-nav-item{{if eq .ActiveMenu "invoices"}} li-nav-item--active{{end}}">
+          📄 Invoices
+        </a>
+        <a href="/quotes" class="li-nav-item{{if eq .ActiveMenu "quotes"}} li-nav-item--active{{end}}">
+          📋 Quotes
+        </a>
+        <a href="/payments" class="li-nav-item{{if eq .ActiveMenu "payments"}} li-nav-item--active{{end}}">
+          💰 Payments
+        </a>
+      </div>
+      
+      <!-- Print Shop Section -->
+      <div class="li-nav-section">
+        <div class="li-nav-section__label">Print Shop</div>
+        <a href="/filaments" class="li-nav-item{{if eq .ActiveMenu "filaments"}} li-nav-item--active{{end}}">
+          🧵 Filaments
+        </a>
+      </div>
+
+      <!-- CRM Section -->
+      <div class="li-nav-section">
+        <div class="li-nav-section__label">CRM</div>
+        <a href="/clients" class="li-nav-item{{if eq .ActiveMenu "clients"}} li-nav-item--active{{end}}">
+          👥 Clients
+        </a>
+      </div>
+
+      <!-- Admin Section -->
+      <div class="li-nav-section">
+        <div class="li-nav-section__label">Admin</div>
+        <a href="/settings" class="li-nav-item{{if eq .ActiveMenu "settings"}} li-nav-item--active{{end}}">
+          ⚙ Settings
+        </a>
+        <a href="/system" class="li-nav-item{{if eq .ActiveMenu "system"}} li-nav-item--active{{end}}">
+          🛡 System
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Workspace -->
+    <main class="li-main-content" hx-history-elt>
+      {{template "content" .}}
+    </main>
+  </div>
+
+  <!-- Flash Notifications Box -->
+  <div class="li-flash-container" id="flash-container">
+    {{if .FlashSuccess}}
+    <div class="li-flash li-flash--success" x-data="{show: true}" x-show="show" x-init="setTimeout(() => show = false, 4000)">
+      ✓ {{.FlashSuccess}}
+    </div>
+    {{end}}
+    {{if .FlashError}}
+    <div class="li-flash li-flash--error" x-data="{show: true}" x-show="show" x-init="setTimeout(() => show = false, 4000)">
+      ✗ {{.FlashError}}
+    </div>
+    {{end}}
+  </div>
+
+  <!-- Global Modal Dialog Container -->
+  <dialog id="app-modal" x-data="{open: false}" @keydown.escape.window="open = false">
+    <div id="modal-container">
+      <!-- Loaded dynamically via HTMX -->
+    </div>
+  </dialog>
+
+</body>
+</html>
+{{end}}

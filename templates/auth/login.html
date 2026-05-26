@@ -1,0 +1,27 @@
+{{define "content"}}
+<div class="li-auth-card__header">
+  <div class="li-auth-card__logo">🖨</div>
+  <h1 class="li-auth-card__title">LayerInvoice</h1>
+  <p class="li-auth-card__sub">Sign in to manage your 3D print business billing</p>
+</div>
+
+<form action="/login" method="POST">
+  <div>
+    <label for="email">Email Address</label>
+    <input type="email" id="email" name="email" placeholder="operator@example.com" required autocomplete="username">
+  </div>
+  
+  <div style="margin-top: var(--space-4);">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+  </div>
+  
+  <button type="submit" class="li-btn li-btn--primary" style="width: 100%; margin-top: var(--space-6);">
+    Sign In
+  </button>
+</form>
+
+<div style="text-align: center; margin-top: var(--space-5); font-size: var(--text-small); color: var(--color-text-secondary);">
+  Need an account? Run the initial system setup at <a href="/setup">/setup</a>.
+</div>
+{{end}}

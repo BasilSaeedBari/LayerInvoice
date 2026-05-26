@@ -1,0 +1,383 @@
+{{define "content"}}
+{{$isDraft := eq .Data.Status "draft"}}
+
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <div style="display: flex; align-items: center; gap: var(--space-3);">
+      <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">
+        Quote {{.Data.QuoteNumber}}
+      </h1>
+      <span class="li-badge li-badge--{{lower .Data.Status}}">{{.Data.Status}}</span>
+    </div>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      To: <span style="font-weight: 600;">{{if .Data.CompanyName}}{{.Data.CompanyName}}{{else}}{{.Data.ClientName}}{{end}}</span>
+    </p>
+  </div>
+  
+  <div class="li-card__actions" style="display: flex; align-items: center; gap: var(--space-2);">
+    <a href="/quotes" class="li-btn li-btn--secondary">⬅ Back to List</a>
+    <a href="/quotes/{{.Data.ID}}/pdf" class="li-btn li-btn--secondary" target="_blank">🖨 Export PDF</a>
+    
+    {{if $isDraft}}
+      <a href="/quotes/{{.Data.ID}}/status?to=sent" class="li-btn li-btn--primary">🚀 Mark as Sent</a>
+    {{else if eq .Data.Status "sent"}}
+      <a href="/quotes/{{.Data.ID}}/status?to=accepted" class="li-btn li-btn--primary">✓ Accept Quote</a>
+      <a href="/quotes/{{.Data.ID}}/status?to=rejected" class="li-btn li-btn--danger">✕ Reject Quote</a>
+    {{else if eq .Data.Status "accepted"}}
+      <form action="/quotes/{{.Data.ID}}/convert" method="POST" style="margin:0;">
+        <button type="submit" class="li-btn li-btn--primary">🔄 Convert to Invoice</button>
+      </form>
+    {{end}}
+
+    <form action="/quotes/{{.Data.ID}}/delete" method="POST" style="margin:0;" onsubmit="return confirm('Are you sure you want to delete this quote?');">
+      <button type="submit" class="li-btn li-btn--danger">✕ Delete Quote</button>
+    </form>
+  </div>
+</div>
+
+<!-- Quote Metadata Details -->
+<div class="li-setup-grid">
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Quote Metadata</h2>
+    </div>
+    <div class="li-form-row">
+      <div>
+        <div style="font-size: var(--text-micro); font-weight: 700; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 4px;">
+          📅 Issue Date
+        </div>
+        <div style="font-size: var(--text-body); font-weight: 600;">
+          {{formatDate .Data.IssueDate}}
+        </div>
+      </div>
+      <div>
+        <div style="font-size: var(--text-micro); font-weight: 700; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 4px;">
+          📅 Expiry Date
+        </div>
+        <div style="font-size: var(--text-body); font-weight: 600; color: var(--color-status-overdue);">
+          {{if .Data.ExpiryDate}}{{formatDate .Data.ExpiryDate}}{{else}}No expiry set{{end}}
+        </div>
+      </div>
+      <div>
+        <div style="font-size: var(--text-micro); font-weight: 700; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 4px;">
+          💵 Currency
+        </div>
+        <div style="font-size: var(--text-body); font-weight: 600;">
+          {{.Data.Currency}}
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Client Information</h2>
+    </div>
+    <div class="li-form-row">
+      <div>
+        <div style="font-size: var(--text-micro); font-weight: 700; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 4px;">
+          👤 Client Contact
+        </div>
+        <div style="font-size: var(--text-body); font-weight: 600;">
+          {{.Data.ClientName}}
+        </div>
+      </div>
+      <div>
+        <div style="font-size: var(--text-micro); font-weight: 700; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 4px;">
+          ✉ Email Address
+        </div>
+        <div style="font-size: var(--text-body); font-weight: 600;">
+          {{if .Data.ClientEmail}}{{.Data.ClientEmail}}{{else}}<span style="color: var(--color-text-muted);">None</span>{{end}}
+        </div>
+      </div>
+    </div>
+  </article>
+</div>
+
+<!-- Itemized Line Items Table -->
+<article class="li-card">
+  <div class="li-card__header">
+    <h2>Estimated Line Items</h2>
+    {{if $isDraft}}
+    <div class="li-card__actions">
+      <button class="li-btn li-btn--secondary li-btn--sm"
+              hx-get="/quotes/{{.Data.ID}}/line-items/new-custom"
+              hx-target="#line-items-tbody"
+              hx-swap="beforeend">
+        ➕ Add Custom Item
+      </button>
+      
+      <button class="li-btn li-btn--primary li-btn--sm"
+              onclick="document.getElementById('print-calc-modal').showModal()">
+        ⚙️ Add 3D Print Job
+      </button>
+    </div>
+    {{end}}
+  </div>
+
+  <div class="li-table-wrap" style="margin-bottom: var(--space-6);">
+    <table class="li-line-item-table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th style="width: 100px;">Quantity</th>
+          <th style="width: 80px;">Unit</th>
+          <th style="width: 150px;" class="li-col-right">Unit Price</th>
+          <th style="width: 150px;" class="li-col-right">Total</th>
+          {{if $isDraft}}<th style="width: 50px;" class="li-col-center"></th>{{end}}
+        </tr>
+      </thead>
+      <tbody id="line-items-tbody">
+        {{if .Data.LineItems}}
+          {{range .Data.LineItems}}
+            {{if $isDraft}}
+              <!-- Editable Line Item Row -->
+              <tr id="li-row-{{.ID}}">
+                <td>
+                  <input type="text" name="name" value="{{.Name}}" placeholder="Service or product name"
+                         hx-post="/quotes/{{$.Data.ID}}/line-items/{{.ID}}/update" hx-trigger="keyup changed delay:500ms" hx-include="closest tr">
+                  <input type="text" name="description" value="{{.Description}}" placeholder="Additional details (optional)" style="font-size: var(--text-small); margin-top: 4px;"
+                         hx-post="/quotes/{{$.Data.ID}}/line-items/{{.ID}}/update" hx-trigger="keyup changed delay:500ms" hx-include="closest tr">
+                </td>
+                
+                <td>
+                  <input type="number" name="qty" value="{{.Quantity}}" step="0.01" min="0" placeholder="1"
+                         hx-post="/quotes/{{$.Data.ID}}/line-items/{{.ID}}/update" hx-target="#li-total-{{.ID}}" hx-trigger="keyup changed delay:500ms, change" hx-include="closest tr">
+                </td>
+                
+                <td>
+                  <input type="text" name="unit" value="{{.Unit}}" placeholder="pcs"
+                         hx-post="/quotes/{{$.Data.ID}}/line-items/{{.ID}}/update" hx-trigger="keyup changed delay:500ms" hx-include="closest tr">
+                </td>
+                
+                <td>
+                  <input type="text" name="unit_price" value="{{formatMoneyRaw .UnitPrice}}" placeholder="0.00" class="li-col-right"
+                         hx-post="/quotes/{{$.Data.ID}}/line-items/{{.ID}}/update" hx-target="#li-total-{{.ID}}" hx-trigger="keyup changed delay:500ms, change" hx-include="closest tr">
+                </td>
+                
+                <td class="li-col-right li-money" style="font-weight: 700;" id="li-total-{{.ID}}">
+                  Rs {{formatMoneyRaw .LineTotal}}
+                </td>
+                
+                <td class="li-col-center">
+                  <button class="li-btn li-btn--ghost li-btn--sm" style="color: var(--color-error) !important;"
+                          hx-delete="/quotes/{{$.Data.ID}}/line-items/{{.ID}}"
+                          hx-target="#li-row-{{.ID}}" hx-swap="outerHTML"
+                          hx-confirm="Are you sure you want to delete this item?">
+                    ✕
+                  </button>
+                </td>
+              </tr>
+            {{else}}
+              <!-- Read-only Line Item Row -->
+              <tr>
+                <td>
+                  <span style="font-weight: 700;">{{.Name}}</span>
+                  {{if .Description}}<div style="font-size: var(--text-small); color: var(--color-text-secondary); margin-top: 2px;">{{.Description}}</div>{{end}}
+                </td>
+                <td>{{.Quantity}}</td>
+                <td>{{if .Unit}}{{.Unit}}{{else}}pcs{{end}}</td>
+                <td class="li-col-right li-money">{{formatMoney .UnitPrice $.Data.Currency}}</td>
+                <td class="li-col-right li-money" style="font-weight: 700;">{{formatMoney .LineTotal $.Data.Currency}}</td>
+              </tr>
+            {{end}}
+          {{end}}
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Dynamic Totals Block -->
+  <div id="totals-block" 
+       hx-get="/quotes/{{.Data.ID}}/totals" 
+       hx-trigger="recalculate_totals from:body" 
+       hx-swap="outerHTML" 
+       class="li-card" 
+       style="max-width: 400px; margin-left: auto; margin-right: 0; background-color: var(--color-surface-alt); margin-bottom: 0;">
+       
+    <div class="li-card__header" style="margin-bottom: var(--space-3); padding-bottom: var(--space-2);">
+      <h3 style="font-size: var(--text-body); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary);">
+        Estimate Financial Totals
+      </h3>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--text-body);">
+      <div style="display: flex; justify-content: space-between;">
+        <span>Subtotal:</span>
+        <span class="li-money">{{formatMoney .Data.Subtotal .Data.Currency}}</span>
+      </div>
+      
+      <div style="display: flex; justify-content: space-between; color: var(--color-status-overdue);">
+        <span>Discount:</span>
+        <span class="li-money">-{{formatMoney .Data.DiscountValue .Data.Currency}}</span>
+      </div>
+
+      <div style="display: flex; justify-content: space-between;">
+        <span>Tax ({{printf "%.2f" (divFloat .Data.TaxRate 100)}}%):</span>
+        <span class="li-money">{{formatMoney .Data.TaxAmount .Data.Currency}}</span>
+      </div>
+
+      <div style="border-top: 2px solid var(--color-text-primary); margin-top: var(--space-2); padding-top: var(--space-2); display: flex; justify-content: space-between; font-weight: 700; font-size: var(--text-subheading);">
+        <span>TOTAL ESTIMATED:</span>
+        <span class="li-money" style="color: var(--color-text-primary);">
+          {{formatMoney .Data.Total .Data.Currency}}
+        </span>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- Discount, Tax Rates, and Notes Form Editor (Auto-saved) -->
+<article class="li-card">
+  <div class="li-card__header">
+    <h2>Defaults, Disclaimers & Notes</h2>
+  </div>
+
+  <form hx-post="/quotes/{{.Data.ID}}/discount-tax" hx-trigger="change" hx-swap="none">
+    <div class="li-form-row">
+      <label>Tax Rate (Basis Points)
+        <input type="number" name="tax_rate" value="{{.Data.TaxRate}}" min="0" placeholder="0" {{if not $isDraft}}readonly{{end}}>
+        <small style="color: var(--color-text-secondary);">100 bp = 1% (e.g. 1700 bp = 17%)</small>
+      </label>
+      <label>Discount Amount (PKR)
+        <input type="text" name="discount_value" value="{{formatMoneyRaw .Data.DiscountValue}}" placeholder="0.00" {{if not $isDraft}}readonly{{end}}>
+        <small style="color: var(--color-text-secondary);">Fixed discount subtracted from subtotal</small>
+      </label>
+    </div>
+    
+    <div class="li-form-row" style="margin-top: var(--space-4);">
+      <label>Notes / Private Comments
+        <textarea name="notes" placeholder="Internal or client notes..." rows="3" {{if not $isDraft}}readonly{{end}}>{{.Data.Notes}}</textarea>
+      </label>
+      <label>Estimate Terms & Disclaimers
+        <textarea name="terms" placeholder="Quote validity terms, delivery timelines, payment schedules..." rows="3" {{if not $isDraft}}readonly{{end}}>{{.Data.Terms}}</textarea>
+      </label>
+    </div>
+  </form>
+</article>
+
+{{if $isDraft}}
+<!-- Branded Custom 3D Print Calculator Modal Dialog -->
+<dialog id="print-calc-modal">
+  <article>
+    <header>
+      <h3>3D Print Cost Calculator</h3>
+      <button class="li-btn li-btn--ghost li-btn--sm" onclick="document.getElementById('print-calc-modal').close()">✕</button>
+    </header>
+    
+    <form id="calc-form"
+          hx-post="/quotes/{{.Data.ID}}/line-items/3d-print-add"
+          hx-target="#line-items-tbody"
+          hx-swap="beforeend"
+          hx-on::after-request="if (event.detail.elt === this) { document.getElementById('print-calc-modal').close(); document.getElementById('calc-form').reset(); document.getElementById('calc-preview').innerHTML = '<div style=&quot;display: flex; align-items: center; justify-content: center; min-height: 100px; color: var(--color-text-muted);&quot;>Adjust parameters to calculate cost live</div>'; }">
+      
+      <div hx-swap="innerHTML">
+        <div class="li-form-row" style="margin-bottom: var(--space-3);">
+          <label>Print Item Name *
+            <input type="text" name="print_name" placeholder="3D Printed Prototype Model" required>
+          </label>
+          <label>Description / Project Details
+            <input type="text" name="print_desc" placeholder="PLA Galaxy Black, 0.2mm layer height">
+          </label>
+        </div>
+
+        <div class="li-calc-section">
+          <h4>Filament Usage Specs</h4>
+          <div class="li-form-row">
+            <label>Filament Profile
+              <select name="filament_id" hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="change" hx-swap="innerHTML">
+                <option value="" disabled selected>-- Select Material --</option>
+                {{range .Data.Filaments}}
+                <option value="{{.ID}}">{{.Name}} (Rs{{formatMoneyRaw .CostPerGram}}/g)</option>
+                {{end}}
+              </select>
+            </label>
+            <label>Grams Weight Used
+              <input type="number" name="grams" value="0.0" step="0.01" min="0" 
+                     hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
+            </label>
+            <label>Filament Profit Markup %
+              <input type="number" name="filament_profit_pct" value="100" min="0"
+                     hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
+              <small>% markup (100% = 2× spool cost)</small>
+            </label>
+          </div>
+        </div>
+
+        <div class="li-calc-section">
+          <h4>Time & Labour Details</h4>
+          <div class="li-form-row">
+            <label>Print Duration (Hours)
+              <input type="number" name="print_hours" value="0.0" step="0.1" min="0"
+                     hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
+            </label>
+            <label>Hourly Machine Rate (Rs/hr)
+              <input type="text" name="time_rate" value="20.00"
+                     hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
+            </label>
+            <label>Labor Fee (Rs)
+              <input type="text" name="labour_cost" value="0.00"
+                     hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
+            </label>
+          </div>
+        </div>
+
+        <div class="li-calc-section">
+          <h4>Additional Overheads</h4>
+          <div class="li-form-row">
+            <label>Electricity Cost (Rs)
+              <input type="text" name="electricity_cost" value="0.00"
+                     hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
+            </label>
+            <label>Post-Processing Cost (Rs)
+              <input type="text" name="postproc_cost" value="0.00"
+                     hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
+            </label>
+          </div>
+          <div class="li-form-row" style="margin-top: var(--space-2);">
+            <label>Packaging Box Cost (Rs)
+              <input type="text" name="packaging_cost" value="0.00"
+                     hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
+            </label>
+            <label>Delivery Shipping Cost (Rs)
+              <input type="text" name="shipping_cost" value="0.00"
+                     hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
+            </label>
+          </div>
+        </div>
+
+        <div class="li-calc-section">
+          <h4>Failure Margins & Multipliers</h4>
+          <div class="li-form-row">
+            <label>Print Failure Rate %
+              <input type="number" name="failure_rate" value="5" min="0" max="100"
+                     hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
+              <small>Overhead covering failed runs</small>
+            </label>
+            <label>Job Profit Multiplier %
+              <input type="number" name="profit_multiplier" value="50" min="0"
+                     hx-post="/calc/print-cost" hx-target="#calc-preview" hx-trigger="keyup changed delay:300ms, change" hx-swap="innerHTML">
+              <small>Applied to total production costs (50% = 1.5×)</small>
+            </label>
+          </div>
+        </div>
+
+        <div class="li-calc-preview">
+          <h5>Cost Calculation Breakdown</h5>
+          <div id="calc-preview">
+            <div style="display: flex; align-items: center; justify-content: center; min-height: 100px; color: var(--color-text-muted);">
+              Adjust parameters to calculate cost live
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <button type="button" class="li-btn li-btn--secondary" onclick="document.getElementById('print-calc-modal').close()">Cancel</button>
+        <button type="submit" class="li-btn li-btn--primary">Add to Quote</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}
+{{end}}

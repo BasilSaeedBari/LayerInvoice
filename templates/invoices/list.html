@@ -1,0 +1,77 @@
+{{define "content"}}
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">Invoices</h1>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      Generate, track, and record payments for 3D printing jobs and custom client invoices
+    </p>
+  </div>
+  <div class="li-card__actions">
+    <a href="/invoices/new" class="li-btn li-btn--primary">📄 New Invoice</a>
+  </div>
+</div>
+
+<article class="li-card" style="padding: 0;">
+  {{if .Data}}
+  <div class="li-table-wrap" style="border: none; border-radius: 0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Client Name</th>
+          <th>Issue Date</th>
+          <th>Due Date</th>
+          <th class="li-col-right">Total</th>
+          <th class="li-col-right">Balance Due</th>
+          <th>Status</th>
+          <th class="li-col-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Data}}
+        <tr>
+          <td>
+            <a href="/invoices/{{.ID}}" style="font-weight: 700; text-decoration: none;">
+              {{.InvoiceNumber}}
+            </a>
+          </td>
+          <td>
+            <div style="font-weight: 600; color: var(--color-text-primary);">
+              {{if .CompanyName}}{{.CompanyName}}{{else}}{{.ContactName}}{{end}}
+            </div>
+            {{if .CompanyName}}
+            <div style="font-size: var(--text-micro); color: var(--color-text-secondary);">👤 {{.ContactName}}</div>
+            {{end}}
+          </td>
+          <td>{{formatDate .IssueDate}}</td>
+          <td>{{formatDate .DueDate}}</td>
+          <td class="li-col-right li-money">
+            {{formatMoney .Total .Currency}}
+          </td>
+          <td class="li-col-right li-money" style="{{if gt .BalanceDue 0}}color: var(--color-status-overdue);{{end}}">
+            {{formatMoney .BalanceDue .Currency}}
+          </td>
+          <td>
+            <span class="li-badge li-badge--{{lower .Status}}">{{.Status}}</span>
+          </td>
+          <td class="li-col-right">
+            <div class="li-col-actions">
+              <a href="/invoices/{{.ID}}" class="li-btn li-btn--ghost li-btn--sm">Edit/View</a>
+              <a href="/invoices/{{.ID}}/pdf" class="li-btn li-btn--secondary li-btn--sm" target="_blank">PDF</a>
+            </div>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div style="text-align: center; padding: var(--space-12); color: var(--color-text-secondary);">
+    <div style="font-size: 2.5rem; margin-bottom: var(--space-4);">📄</div>
+    <h3>No Invoices Found</h3>
+    <p>Establish a billing item to request payments from clients for your completed printing jobs.</p>
+    <a href="/invoices/new" class="li-btn li-btn--primary" style="margin-top: var(--space-4);">Create Invoice</a>
+  </div>
+  {{end}}
+</article>
+{{end}}

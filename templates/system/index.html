@@ -1,0 +1,168 @@
+{{define "content"}}
+<div class="li-card__header" style="border-bottom: none; margin-bottom: var(--space-6); padding-bottom: 0;">
+  <div>
+    <h1 style="margin: 0; font-size: var(--text-hero); font-weight: 700; color: var(--color-text-primary);">System Controls</h1>
+    <p style="margin: var(--space-1) 0 0 0; color: var(--color-text-secondary); font-size: var(--text-body);">
+      Manage system administrator accounts, user permissions, and tax rate presets
+    </p>
+  </div>
+</div>
+
+<div class="li-setup-grid">
+  <!-- Administrators Management -->
+  <article class="li-card" style="padding: 0;">
+    <div class="li-card__header" style="padding: var(--space-4) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--color-border);">
+      <h2>Authorized System Users</h2>
+    </div>
+
+    {{if .Data.Users}}
+    <div class="li-table-wrap" style="border: none; border-radius: 0;">
+      <table>
+        <thead>
+          <tr>
+            <th>User Details</th>
+            <th>Role</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.Users}}
+          <tr>
+            <td>
+              <div style="font-weight: 700; color: var(--color-text-primary);">{{.Name}}</div>
+              <div style="font-size: var(--text-small); color: var(--color-text-secondary);">{{.Email}}</div>
+            </td>
+            <td>
+              <span style="font-size: var(--text-small); font-weight: 600; text-transform: uppercase; background-color: var(--color-surface-alt); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--color-border);">
+                {{.Role}}
+              </span>
+            </td>
+            <td>
+              {{if .IsActive}}
+              <span class="li-badge li-badge--paid" style="font-size: var(--text-micro);">Active</span>
+              {{else}}
+              <span class="li-badge li-badge--draft" style="font-size: var(--text-micro);">Inactive</span>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+  </article>
+
+  <!-- Add User Account Form -->
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Register System Administrator</h2>
+    </div>
+    
+    <form action="/system/users" method="POST">
+      <div class="li-form-row">
+        <label>Operator Name *
+          <input type="text" name="name" placeholder="Alice Bob" required>
+        </label>
+        <label>Email Address *
+          <input type="email" name="email" placeholder="alice@company.com" required>
+        </label>
+      </div>
+
+      <div class="li-form-row" style="margin-top: var(--space-4);">
+        <label>Password *
+          <input type="password" name="password" placeholder="••••••••" required>
+        </label>
+        <label>Role Privilege *
+          <select name="role" required>
+            <option value="employee" selected>Employee / Staff</option>
+            <option value="owner">Owner / Admin</option>
+            <option value="viewer">Viewer (Read-Only)</option>
+          </select>
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: var(--space-5);">
+        <button type="submit" class="li-btn li-btn--primary">
+          Register User Account
+        </button>
+      </div>
+    </form>
+  </article>
+</div>
+
+<div class="li-setup-grid" style="margin-top: var(--space-6);">
+  <!-- Active Tax Rates -->
+  <article class="li-card" style="padding: 0;">
+    <div class="li-card__header" style="padding: var(--space-4) var(--space-6); margin-bottom: 0; border-bottom: 1px solid var(--color-border);">
+      <h2>Tax Rate Settings</h2>
+    </div>
+    
+    {{if .Data.TaxRates}}
+    <div class="li-table-wrap" style="border: none; border-radius: 0;">
+      <table>
+        <thead>
+          <tr>
+            <th>Tax Label</th>
+            <th class="li-col-right">Percentage Rate</th>
+            <th class="li-col-center">Default Preset</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Data.TaxRates}}
+          <tr>
+            <td><span style="font-weight: 700;">{{.Name}}</span></td>
+            <td class="li-col-right" style="font-variant-numeric: tabular-nums;">
+              {{printf "%.2f" (divFloat .Rate 100)}}%
+            </td>
+            <td class="li-col-center">
+              {{if .IsDefault}}
+              <span class="li-badge li-badge--paid">Default</span>
+              {{else}}
+              <span style="color: var(--color-text-muted);">No</span>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div style="text-align: center; padding: var(--space-6); color: var(--color-text-secondary);">
+      No tax rate presets registered.
+    </div>
+    {{end}}
+  </article>
+
+  <!-- Add Tax Rate Form -->
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Register Tax Rate Preset</h2>
+    </div>
+    
+    <form action="/system/tax-rates" method="POST">
+      <div class="li-form-row">
+        <label>Tax Display Name *
+          <input type="text" name="name" placeholder="GST 17%" required>
+        </label>
+        <label>Tax Rate (Basis Points) *
+          <input type="number" name="rate" placeholder="1700" required>
+          <small style="color: var(--color-text-secondary);">100 bp = 1% (e.g. 1700 bp = 17%)</small>
+        </label>
+      </div>
+
+      <div style="margin-top: var(--space-4);">
+        <label style="display: flex; align-items: center; gap: var(--space-2); text-transform: none; font-weight: normal; font-size: var(--text-body);">
+          <input type="checkbox" name="is_default" value="1" style="width: auto; margin: 0;">
+          Make this the default tax rate for new invoices/clients
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: var(--space-5);">
+        <button type="submit" class="li-btn li-btn--primary">
+          Register Tax Preset
+        </button>
+      </div>
+    </form>
+  </article>
+</div>
+{{end}}
