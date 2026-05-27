@@ -32,6 +32,10 @@ Create professional quotes and invoices, manage clients, estimate 3D printing co
   <a href="https://github.com/BasilSaeedBari/LayerInvoice/stargazers">
     <img alt="GitHub Stars" src="https://img.shields.io/github/stars/BasilSaeedBari/LayerInvoice?style=flat-square" />
   </a>
+
+  <a href="https://discord.gg/nV8NxETrbW">
+    <img alt="Discord" src="https://img.shields.io/badge/Discord-Join%20Server-5865F2?style=flat-square&logo=discord&logoColor=white" />
+  </a>
 </p>
 
 <p>
@@ -45,6 +49,10 @@ Create professional quotes and invoices, manage clients, estimate 3D printing co
 
   <a href="https://github.com/BasilSaeedBari/LayerInvoice/issues">
     <img src="https://img.shields.io/badge/Contributions-Welcome-orange?style=for-the-badge" alt="Contributions Welcome" />
+  </a>
+
+  <a href="https://discord.gg/nV8NxETrbW">
+    <img src="https://img.shields.io/badge/Community-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord Community" />
   </a>
 </p>
 
