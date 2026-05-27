@@ -168,16 +168,17 @@ func (h *InvoicesHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	id := db.NewULID()
 	now := time.Now().Format(time.RFC3339)
+	defaultTerms := h.getSetting(r.Context(), tenant.ID, "default_terms", "")
 
 	query := `
 		INSERT INTO invoices (
 			id, tenant_id, client_id, invoice_number, status, issue_date, due_date, currency,
-			subtotal, total, balance_due, created_by, created_at, updated_at
-		) VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, 0, 0, 0, ?, ?, ?)
+			subtotal, total, balance_due, terms, created_by, created_at, updated_at
+		) VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, 0, 0, 0, ?, ?, ?, ?)
 	`
 
 	_, err := h.app.DB.ExecContext(r.Context(), query,
-		id, tenant.ID, clientID, invoiceNumber, issueDate, dueDate, currency, user.ID, now, now,
+		id, tenant.ID, clientID, invoiceNumber, issueDate, dueDate, currency, defaultTerms, user.ID, now, now,
 	)
 
 	if err != nil {

@@ -36,6 +36,7 @@ type SettingsPageData struct {
 	CompanyPhone    string
 	CompanyCurrency string
 	CompanyLogo     string
+	DefaultTerms    string
 
 	SMTPHost      string
 	SMTPPort      string
@@ -61,6 +62,7 @@ func (h *SettingsHandler) ShowCompany(w http.ResponseWriter, r *http.Request) {
 		CompanyPhone:    h.getSetting(ctx, tenant.ID, "company_phone", ""),
 		CompanyCurrency: h.getSetting(ctx, tenant.ID, "company_currency", "PKR"),
 		CompanyLogo:     h.getSetting(ctx, tenant.ID, "company_logo", ""),
+		DefaultTerms:    h.getSetting(ctx, tenant.ID, "default_terms", ""),
 	}
 
 	Render(w, r, h.app.TemplatesFS, "base", "settings/company.html", data, "Company Settings", "settings")
@@ -80,6 +82,7 @@ func (h *SettingsHandler) SaveCompany(w http.ResponseWriter, r *http.Request) {
 	fields := []string{
 		"company_name", "company_street", "company_city", "company_state",
 		"company_zip", "company_country", "company_email", "company_phone", "company_currency",
+		"default_terms",
 	}
 
 	for _, key := range fields {

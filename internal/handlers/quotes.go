@@ -148,16 +148,17 @@ func (h *QuotesHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	id := db.NewULID()
 	now := time.Now().Format(time.RFC3339)
+	defaultTerms := h.getSetting(r.Context(), tenant.ID, "default_terms", "")
 
 	query := `
 		INSERT INTO quotes (
 			id, tenant_id, client_id, quote_number, status, issue_date, expiry_date, currency,
-			subtotal, total, created_by, created_at, updated_at
-		) VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, 0, 0, ?, ?, ?)
+			subtotal, total, terms, created_by, created_at, updated_at
+		) VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, 0, 0, ?, ?, ?, ?)
 	`
 
 	_, err := h.app.DB.ExecContext(r.Context(), query,
-		id, tenant.ID, clientID, quoteNumber, issueDate, expiryDate, currency, user.ID, now, now,
+		id, tenant.ID, clientID, quoteNumber, issueDate, expiryDate, currency, defaultTerms, user.ID, now, now,
 	)
 
 	if err != nil {
@@ -539,7 +540,7 @@ func (h *QuotesHandler) Totals(w http.ResponseWriter, r *http.Request) {
 		"Total":         total,
 	}
 
-	RenderPartial(w, r, h.app.TemplatesFS, "templates/invoices/partials/totals.html", "totals", data)
+	RenderPartial(w, r, h.app.TemplatesFS, "templates/quotes/partials/totals.html", "totals", data)
 }
 
 func (h *QuotesHandler) UpdateDiscountTax(w http.ResponseWriter, r *http.Request) {

@@ -42,13 +42,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 3. Open and Configure SQLite Database
-	if cfg.AppEnv == "development" {
-		slog.Info("Development environment detected. Resetting database to a clean state...")
-		_ = os.Remove(cfg.DBPath)
-		_ = os.Remove(cfg.DBPath + "-wal")
-		_ = os.Remove(cfg.DBPath + "-shm")
-	}
+
 
 	database, err := db.Open(cfg.DBPath)
 	if err != nil {

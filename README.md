@@ -10,7 +10,7 @@ Create professional quotes and invoices, manage clients, estimate 3D printing co
 
 <p>
   <a href="https://github.com/BasilSaeedBari/LayerInvoice/blob/main/LICENSE">
-    <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square" />
+    <img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" />
   </a>
 
   <a href="https://github.com/BasilSaeedBari/LayerInvoice/actions/workflows/docker-publish.yml">
@@ -66,7 +66,7 @@ LayerInvoice is heavily inspired by the visual design and document-centric layou
 
 ## ✨ Features
 
-- **💼 CRM Client Management**: Full client profiles with integrated billing/shipping addresses, contact emails, direct WhatsApp integration, and customizable client categorization.
+- **💼 CRM Client Management**: Full client profiles with integrated billing/shipping addresses, contact emails, and customizable client categorization.
 - **📜 Estimates & Quotes CRM**: Draft fully items-costed quotes. Transition statuses, export professional PDFs, and convert quotes to full invoices with a single click.
 - **🧾 Automated Invoice Builder**: Clean, inline, auto-saved invoice generation supporting custom line-items, discounts, and custom tax brackets.
 - **⚡ Real-time 3D Printing Cost Calculator**: Computes exact production costs and margins live within the invoice and quote interfaces, removing manual math.
@@ -211,7 +211,6 @@ If you want to run the project from source or make modifications:
    ```bash
    go run main.go
    ```
-   *Note: When `APP_ENV=development` is enabled in your configuration, the server automatically resets the database files (`layerinvoice.db`, `-wal`, `-shm`) on every boot to guarantee a clean migration slate.*
 4. **Compile production binary**:
    ```bash
    go build -ldflags="-s -w" -o layerinvoice .
@@ -252,6 +251,7 @@ Here is the exact status of implemented and planned integration features within 
 - **Multi-tenant SQLite database in WAL-mode**: Zero-configuration DB stack with Goose migrations.
 
 ### 🟡 Planned / Future Roadmap (Left to Implement)
+- **WhatsApp & SMS Client Notifications**: Direct client updates, invoice delivery, and automatic billing reminders dispatched directly through WhatsApp and SMS gateways (currently not implemented).
 - **Third-Party Payment Gateways**: Direct online client payments through Stripe, PayPal, JazzCash, and EasyPaisa integrations (currently payments are logged manually).
 - **Recurring Invoice Automations**: Dynamic Cron-driven billing engine that auto-generates and sends invoices (schema is ready, but scheduling logic is mock/partially automated).
 - **Advanced Cloud Storage Backends**: Option to persist generated PDFs or logos directly in AWS S3, Google Cloud Storage, or MinIO instead of SQLite base64 blobs.
@@ -271,4 +271,4 @@ LayerInvoice follows a highly modular design tailored for reactive server-side H
 
 ## 🛡️ License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) - see the [LICENSE](LICENSE) file for details.

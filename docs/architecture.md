@@ -124,21 +124,21 @@ sequenceDiagram
 
 ### **5. PDF Generation & Debounced Mailer Workflow**
 
-Debouncing and background processing are notoriously hard to represent in a top-down graph. A sequence diagram perfectly captures the timing mechanism and background hand-offs.
+Debouncing and background processing are captures of timing mechanisms and background hand-offs.
 
 ```mermaid
 sequenceDiagram
     participant UI as Browser
     participant Inv as Invoice Module
     participant Debounce as Worker
-    participant PDF as Chromedp
+    participant PDF as Gofpdf (Vector Engine)
     participant SMTP as Mailer Engine
     actor Inbox as Client Email
 
     UI->>Inv: Save Line Item (Keystroke)
     Inv->>Debounce: Emit Save Event
     Note over Debounce: Wait 5 Seconds<br/>(Drop rapid successive events)
-    Debounce->>PDF: Trigger Headless Render
+    Debounce->>PDF: Generate Vector PDF
     PDF-->>Debounce: Compiled PDF Bytes
     Debounce->>SMTP: Dispatch Payload
     SMTP->>Inbox: Deliver Email + Attachment

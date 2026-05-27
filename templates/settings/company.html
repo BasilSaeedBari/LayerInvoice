@@ -92,6 +92,15 @@
     </div>
   </article>
 
+  <article class="li-card">
+    <div class="li-card__header">
+      <h2>Default Terms & Conditions</h2>
+    </div>
+    <label>Default Terms / Payment Details
+      <textarea name="default_terms" rows="5" placeholder="e.g. Bank Account details, payment guidelines...">{{.Data.DefaultTerms}}</textarea>
+      <small style="color: var(--color-text-secondary);">This text will automatically pre-populate the terms and conditions on every new quote and invoice.</small>
+    </label>
+  </article>
 
   <div style="display: flex; justify-content: flex-end; margin-top: var(--space-6);">
     <button type="submit" class="li-btn li-btn--primary">

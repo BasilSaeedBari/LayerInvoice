@@ -35,7 +35,7 @@ The entrypoint of the application. It loads configurations, opens database conne
 - **`main()`**
   - **Inputs**: None (retrieves command-line flags and environment variables).
   - **Outputs**: None.
-  - **Description**: Bootstraps the application. In development environment (`cfg.AppEnv == "development"`), it automatically purges `layerinvoice.db`, `layerinvoice.db-wal`, and `layerinvoice.db-shm` files for a clean database reload.
+  - **Description**: Bootstraps the application, boots SQLite connections, runs Goose database migrations, triggers background schedulers, and starts the HTTP server with support for graceful shutdowns. Database state is fully persisted across restarts.
 
 ---
 
@@ -323,7 +323,7 @@ Registers payment receipts against invoices.
 ### 📄 `internal/handlers/settings.go`
 Updates company details and SMTP mail configurations.
 
-- **`ShowCompany(...)` / `SaveCompany(...)`**: Saves company details. When updating company name, it automatically runs an SQL update on the active organizational `tenants` record to instantly refresh the brand header navigation badge.
+- **`ShowCompany(...)` / `SaveCompany(...)`**: Saves company details, physical business address, logo images, and global Default Terms & Conditions disclaimers. When updating company name, it automatically runs an SQL update on the active organizational `tenants` record to instantly refresh the brand header navigation badge.
 - **`ShowEmail(...)` / `SaveEmail(...)`**: Saves email SMTP credentials.
 - **`TestEmail(...)`**: Outbound SMTP validator. Triggered via HTMX directly from the SMTP configuration screen. Performs real-time server connections, logs connection events and errors to both stdout and structured slog logs, and outputs inline checkmark or diagnostic error panels.
 
