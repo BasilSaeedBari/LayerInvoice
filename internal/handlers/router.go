@@ -94,6 +94,7 @@ func WireRoutes(a *app.App, staticFS embed.FS) *chi.Mux {
 			r.Get("/{id}/status", quoteH.TransitionStatus)
 			r.Post("/{id}/convert", quoteH.ConvertToInvoice)
 			r.Get("/{id}/pdf", quoteH.ShowPDF)
+			r.Get("/{id}/send", quoteH.ResendQuoteEmail)
 			r.Post("/{id}/delete", quoteH.Delete)
 		})
 

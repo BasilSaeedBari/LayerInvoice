@@ -119,10 +119,20 @@ func (h *InvoicesHandler) ShowNewForm(w http.ResponseWriter, r *http.Request) {
 		clients = append(clients, co)
 	}
 
-	// Auto-generate invoice number
+	// Auto-generate invoice number robustly checking for uniqueness
 	var count int
 	h.app.DB.QueryRowContext(r.Context(), "SELECT COUNT(id) FROM invoices WHERE tenant_id = ?", tenant.ID).Scan(&count)
-	nextNumber := fmt.Sprintf("INV-%04d", count+1)
+	
+	nextNumber := ""
+	for i := count + 1; ; i++ {
+		candidate := fmt.Sprintf("INV-%04d", i)
+		var exists int
+		h.app.DB.QueryRowContext(r.Context(), "SELECT COUNT(id) FROM invoices WHERE tenant_id = ? AND invoice_number = ?", tenant.ID, candidate).Scan(&exists)
+		if exists == 0 {
+			nextNumber = candidate
+			break
+		}
+	}
 
 	data := map[string]interface{}{
 		"Clients":         clients,

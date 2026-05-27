@@ -18,6 +18,10 @@
     <a href="/quotes" class="li-btn li-btn--secondary">⬅ Back to List</a>
     <a href="/quotes/{{.Data.ID}}/pdf" class="li-btn li-btn--secondary" target="_blank">🖨 Export PDF</a>
     
+    {{if ne .Data.Status "draft"}}
+      <a href="/quotes/{{.Data.ID}}/send" class="li-btn li-btn--secondary">🚀 Resend Quote</a>
+    {{end}}
+    
     {{if $isDraft}}
       <a href="/quotes/{{.Data.ID}}/status?to=sent" class="li-btn li-btn--primary">🚀 Mark as Sent</a>
     {{else if eq .Data.Status "sent"}}

@@ -9,8 +9,10 @@ import (
 	"layerinvoice/internal/auth"
 	"layerinvoice/internal/calculator"
 	"layerinvoice/internal/db"
+	"layerinvoice/internal/mail"
 	"layerinvoice/internal/money"
 	"layerinvoice/internal/pdf"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -111,7 +113,17 @@ func (h *QuotesHandler) ShowNewForm(w http.ResponseWriter, r *http.Request) {
 
 	var count int
 	h.app.DB.QueryRowContext(r.Context(), "SELECT COUNT(id) FROM quotes WHERE tenant_id = ?", tenant.ID).Scan(&count)
-	nextNumber := fmt.Sprintf("QTE-%04d", count+1)
+	
+	nextNumber := ""
+	for i := count + 1; ; i++ {
+		candidate := fmt.Sprintf("QTE-%04d", i)
+		var exists int
+		h.app.DB.QueryRowContext(r.Context(), "SELECT COUNT(id) FROM quotes WHERE tenant_id = ? AND quote_number = ?", tenant.ID, candidate).Scan(&exists)
+		if exists == 0 {
+			nextNumber = candidate
+			break
+		}
+	}
 
 	data := map[string]interface{}{
 		"Clients":         clients,
@@ -293,10 +305,30 @@ func (h *QuotesHandler) ConvertToInvoice(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// 2. Auto-generate invoice number
+	// 2. Auto-generate invoice number robustly checking for uniqueness
 	var count int
 	h.app.DB.QueryRowContext(ctx, "SELECT COUNT(id) FROM invoices WHERE tenant_id = ?", tenant.ID).Scan(&count)
-	invNumber := fmt.Sprintf("INV-%s", quoteNo[4:]) // match quote number suffix or simple count
+	
+	invNumber := ""
+	quoteSuffix := ""
+	if len(quoteNo) > 4 {
+		quoteSuffix = quoteNo[4:]
+	}
+	
+	startNum := count + 1
+	if parsedSuffix, err := strconv.Atoi(quoteSuffix); err == nil {
+		startNum = parsedSuffix
+	}
+	
+	for i := startNum; ; i++ {
+		candidate := fmt.Sprintf("INV-%04d", i)
+		var exists int
+		h.app.DB.QueryRowContext(ctx, "SELECT COUNT(id) FROM invoices WHERE tenant_id = ? AND invoice_number = ?", tenant.ID, candidate).Scan(&exists)
+		if exists == 0 {
+			invNumber = candidate
+			break
+		}
+	}
 
 	invoiceID := db.NewULID()
 	today := time.Now().Format("2006-01-02")
@@ -592,6 +624,10 @@ func (h *QuotesHandler) TransitionStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if targetStatus == "sent" {
+		go h.sendQuoteEmail(context.Background(), tenant.ID, quoteID)
+	}
+
 	SetFlash(w, "flash_success", "Quote is now "+targetStatus+".")
 	http.Redirect(w, r, "/quotes/"+quoteID, http.StatusSeeOther)
 }
@@ -783,12 +819,8 @@ func (h *QuotesHandler) recalculateQuoteTotals(ctx context.Context, tenantID, qu
 	`, subtotal, taxAmount, total, tenantID, quoteID)
 }
 
-// ShowPDF generates the quote PDF and streams it directly to the browser.
-func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
-	tenant, _ := auth.GetTenant(r.Context())
-	quoteID := chi.URLParam(r, "id")
-	ctx := r.Context()
-
+// generatePDFBytes compiles all metadata, seller settings, and line items, generating raw PDF bytes and returning the quote number.
+func (h *QuotesHandler) generatePDFBytes(ctx context.Context, tenantID, quoteID string) ([]byte, string, error) {
 	// 1. Fetch Quote Metadata
 	var quoteNo, issueDate, expiryDate, currency, notes, terms string
 	var subtotal, taxRate, taxAmount, discountValue, total int64
@@ -808,7 +840,7 @@ func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
 		WHERE q.tenant_id = ? AND q.id = ?
 	`
 
-	err := h.app.DB.QueryRowContext(ctx, query, tenant.ID, quoteID).Scan(
+	err := h.app.DB.QueryRowContext(ctx, query, tenantID, quoteID).Scan(
 		&quoteNo, &issueDate, &expiryDate, &currency,
 		&subtotal, &taxRate, &taxAmount, &discountValue, &total,
 		&notes, &terms,
@@ -817,18 +849,19 @@ func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		http.Error(w, "Quote not found", http.StatusNotFound)
-		return
+		return nil, "", err
 	}
 
 	// 2. Fetch Seller Settings
-	sellerName := h.getSetting(ctx, tenant.ID, "company_name", tenant.Name)
+	var tenantName string
+	_ = h.app.DB.QueryRowContext(ctx, `SELECT name FROM tenants WHERE id = ?`, tenantID).Scan(&tenantName)
+	sellerName := h.getSetting(ctx, tenantID, "company_name", tenantName)
 	
-	sStreet := h.getSetting(ctx, tenant.ID, "company_street", "")
-	sCity := h.getSetting(ctx, tenant.ID, "company_city", "")
-	sState := h.getSetting(ctx, tenant.ID, "company_state", "")
-	sZip := h.getSetting(ctx, tenant.ID, "company_zip", "")
-	sCountry := h.getSetting(ctx, tenant.ID, "company_country", "")
+	sStreet := h.getSetting(ctx, tenantID, "company_street", "")
+	sCity := h.getSetting(ctx, tenantID, "company_city", "")
+	sState := h.getSetting(ctx, tenantID, "company_state", "")
+	sZip := h.getSetting(ctx, tenantID, "company_zip", "")
+	sCountry := h.getSetting(ctx, tenantID, "company_country", "")
 
 	var sellerAddrParts []string
 	if sStreet != "" { sellerAddrParts = append(sellerAddrParts, sStreet) }
@@ -838,8 +871,8 @@ func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
 	if sCountry != "" { sellerAddrParts = append(sellerAddrParts, sCountry) }
 	sellerAddress := strings.Join(sellerAddrParts, ", ")
 
-	sEmail := h.getSetting(ctx, tenant.ID, "company_email", "")
-	sPhone := h.getSetting(ctx, tenant.ID, "company_phone", "")
+	sEmail := h.getSetting(ctx, tenantID, "company_email", "")
+	sPhone := h.getSetting(ctx, tenantID, "company_phone", "")
 	sellerContact := ""
 	if sEmail != "" { sellerContact += "Email: " + sEmail }
 	if sPhone != "" {
@@ -869,7 +902,7 @@ func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
 		FROM line_items
 		WHERE tenant_id = ? AND parent_type = 'quote' AND parent_id = ?
 		ORDER BY sort_order ASC, created_at ASC
-	`, tenant.ID, quoteID)
+	`, tenantID, quoteID)
 
 	var items []pdf.PDFLineItem
 	if err == nil {
@@ -886,8 +919,8 @@ func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	companyLogo := h.getSetting(ctx, tenant.ID, "company_logo", "")
-	browserPath := h.getSetting(ctx, tenant.ID, "pdf_browser_path", "")
+	companyLogo := h.getSetting(ctx, tenantID, "company_logo", "")
+	browserPath := h.getSetting(ctx, tenantID, "pdf_browser_path", "")
 
 	doc := pdf.PDFDocument{
 		Title:           "QUOTE",
@@ -914,6 +947,16 @@ func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pdfBytes, err := pdf.Generate(doc, browserPath)
+	return pdfBytes, quoteNo, err
+}
+
+// ShowPDF generates the quote PDF and streams it directly to the browser.
+func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
+	tenant, _ := auth.GetTenant(r.Context())
+	quoteID := chi.URLParam(r, "id")
+	ctx := r.Context()
+
+	pdfBytes, quoteNo, err := h.generatePDFBytes(ctx, tenant.ID, quoteID)
 	if err != nil {
 		http.Error(w, "Failed to generate PDF: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -975,3 +1018,138 @@ func (h *QuotesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	SetFlash(w, "flash_success", "Quote successfully deleted.")
 	http.Redirect(w, r, "/quotes", http.StatusSeeOther)
 }
+
+// sendQuoteEmail handles quote mailing pipeline.
+func (h *QuotesHandler) sendQuoteEmail(ctx context.Context, tenantID, quoteID string) {
+	smtpHost := h.getSetting(ctx, tenantID, "smtp_host", "")
+	smtpPortStr := h.getSetting(ctx, tenantID, "smtp_port", "")
+	smtpUser := h.getSetting(ctx, tenantID, "smtp_user", "")
+	smtpPass := h.getSetting(ctx, tenantID, "smtp_pass", "")
+	smtpFromEmail := h.getSetting(ctx, tenantID, "smtp_from_email", "")
+	smtpFromName := h.getSetting(ctx, tenantID, "smtp_from_name", "")
+
+	if smtpHost == "" || smtpPortStr == "" || smtpUser == "" || smtpPass == "" {
+		fmt.Printf("[Mailer] SMTP not fully configured for tenant %s. Skipping quote email.\n", tenantID)
+		return
+	}
+
+	smtpPort, err := strconv.Atoi(smtpPortStr)
+	if err != nil {
+		fmt.Printf("[Mailer] Invalid SMTP port %s: %v\n", smtpPortStr, err)
+		return
+	}
+
+	var clientEmail, contactName, quoteNum, currency string
+	var total int64
+	query := `
+		SELECT c.email, c.contact_name, q.quote_number, q.currency, q.total
+		FROM quotes q
+		JOIN clients c ON q.client_id = c.id
+		WHERE q.tenant_id = ? AND q.id = ?
+	`
+	err = h.app.DB.QueryRowContext(ctx, query, tenantID, quoteID).Scan(
+		&clientEmail, &contactName, &quoteNum, &currency, &total,
+	)
+	if err != nil {
+		fmt.Printf("[Mailer] Error fetching quote %s details: %v\n", quoteID, err)
+		return
+	}
+
+	if clientEmail == "" {
+		fmt.Printf("[Mailer] No email on file for client on quote %s. Skipping email.\n", quoteNum)
+		return
+	}
+
+	pdfBytes, _, err := h.generatePDFBytes(ctx, tenantID, quoteID)
+	if err != nil {
+		fmt.Printf("[Mailer] Error generating PDF for quote email: %v\n", err)
+		return
+	}
+
+	smtpBcc := h.getSetting(ctx, tenantID, "smtp_bcc_email", "")
+	m := mail.NewMailer(smtpHost, smtpPort, smtpUser, smtpPass, smtpFromEmail, smtpFromName, smtpBcc)
+
+	formattedTotal := money.New(total, currency).String()
+	subject := fmt.Sprintf("Quote %s from %s", quoteNum, smtpFromName)
+	body := fmt.Sprintf(`Hello %s,
+
+Please find attached our quotation %s for %s.
+
+If you have any questions or would like to proceed, please let us know.
+
+Best regards,
+%s`, contactName, quoteNum, formattedTotal, smtpFromName)
+
+	bodyHTML := strings.ReplaceAll(body, "\n", "<br>")
+
+	attachment := mail.Attachment{
+		Name:    fmt.Sprintf("%s.pdf", quoteNum),
+		Content: pdfBytes,
+	}
+
+	err = m.Send(clientEmail, subject, bodyHTML, attachment)
+
+	status := "sent"
+	var errStr sql.NullString
+	if err != nil {
+		status = "failed"
+		errStr.String = err.Error()
+		errStr.Valid = true
+		slog.Error("SMTP quote email dispatch failed", "quote", quoteNum, "client", clientEmail, "error", err)
+		fmt.Printf("[Mailer Error] Failed to send email for quote %s to %s: %v\n", quoteNum, clientEmail, err)
+	} else {
+		slog.Info("SMTP quote email sent successfully", "quote", quoteNum, "client", clientEmail)
+		fmt.Printf("[Mailer] Auto-sent quote %s email successfully to %s\n", quoteNum, clientEmail)
+	}
+
+	// Save to email_log
+	logID := db.NewULID()
+	now := time.Now().Format(time.RFC3339)
+	_, logErr := h.app.DB.ExecContext(ctx, `
+		INSERT INTO email_log (id, tenant_id, parent_type, parent_id, to_address, subject, status, error, sent_at)
+		VALUES (?, ?, 'quote', ?, ?, ?, ?, ?, ?)
+	`, logID, tenantID, quoteID, clientEmail, subject, status, errStr, now)
+	if logErr != nil {
+		slog.Error("Failed to save quote email dispatch log record", "error", logErr)
+	}
+}
+
+// ResendQuoteEmail manual dispatch trigger
+func (h *QuotesHandler) ResendQuoteEmail(w http.ResponseWriter, r *http.Request) {
+	tenant, _ := auth.GetTenant(r.Context())
+	quoteID := chi.URLParam(r, "id")
+	ctx := r.Context()
+
+	var clientEmail string
+	err := h.app.DB.QueryRowContext(ctx, `
+		SELECT c.email FROM quotes q JOIN clients c ON q.client_id = c.id WHERE q.tenant_id = ? AND q.id = ?
+	`, tenant.ID, quoteID).Scan(&clientEmail)
+	if err != nil {
+		SetFlash(w, "flash_error", "Failed to find quote details.")
+		http.Redirect(w, r, "/quotes/"+quoteID, http.StatusSeeOther)
+		return
+	}
+
+	if clientEmail == "" {
+		SetFlash(w, "flash_error", "No email address found for this client.")
+		http.Redirect(w, r, "/quotes/"+quoteID, http.StatusSeeOther)
+		return
+	}
+
+	smtpHost := h.getSetting(ctx, tenant.ID, "smtp_host", "")
+	smtpPortStr := h.getSetting(ctx, tenant.ID, "smtp_port", "")
+	smtpUser := h.getSetting(ctx, tenant.ID, "smtp_user", "")
+	smtpPass := h.getSetting(ctx, tenant.ID, "smtp_pass", "")
+
+	if smtpHost == "" || smtpPortStr == "" || smtpUser == "" || smtpPass == "" {
+		SetFlash(w, "flash_error", "SMTP is not fully configured in settings.")
+		http.Redirect(w, r, "/quotes/"+quoteID, http.StatusSeeOther)
+		return
+	}
+
+	h.sendQuoteEmail(ctx, tenant.ID, quoteID)
+
+	SetFlash(w, "flash_success", "Quote email sent successfully to "+clientEmail)
+	http.Redirect(w, r, "/quotes/"+quoteID, http.StatusSeeOther)
+}
+
