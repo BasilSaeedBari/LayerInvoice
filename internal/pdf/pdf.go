@@ -23,6 +23,7 @@ type PDFDocument struct {
 	ExpiryOrDueDate string // Due Date / Expiry Date
 	Currency        string // PKR / USD
 	CompanyLogo     string // Base64 company logo data URL
+	WatermarkText   string // "PAID" etc.
 
 	SellerName    string
 	SellerAddress string
@@ -71,6 +72,20 @@ func FormatMoney(amount int64, currency string) string {
 // FormatMoneyRaw formats numeric values back to standard decimal representations.
 func FormatMoneyRaw(amount int64) string {
 	return money.FormatAmount(amount)
+}
+
+// drawPageBackground draws the geometric background decorations and a translucent watermark if provided.
+func drawPageBackground(pdf *gofpdf.Fpdf, watermark string) {
+	drawDecorations(pdf)
+
+	if watermark != "" {
+		pdf.TransformBegin()
+		pdf.SetTextColor(245, 241, 248) // extremely light translucent purple-grey
+		pdf.SetFont("Arial", "B", 76)
+		pdf.TransformRotate(45, 105, 148.5)
+		pdf.Text(65, 155, watermark)
+		pdf.TransformEnd()
+	}
 }
 
 // drawDecorations draws the geometric corners and side accent shapes programmatically as vectors.
@@ -226,8 +241,8 @@ func Generate(doc PDFDocument, browserPath string) ([]byte, error) {
 	pdf.SetMargins(15, 15, 15)
 	pdf.AddPage()
 
-	// Draw Background Accent Corner Vector Graphics
-	drawDecorations(pdf)
+	// Draw Background Accent Corner Vector Graphics & Watermark
+	drawPageBackground(pdf, doc.WatermarkText)
 
 	// --- HEADER SECTION (Y=20) ---
 	var headerTextY float64 = 52
@@ -366,8 +381,15 @@ func Generate(doc PDFDocument, browserPath string) ([]byte, error) {
 		}
 	}
 	if doc.SellerContact != "" {
-		pdf.SetXY(15, curY)
-		pdf.CellFormat(55, 3.8, doc.SellerContact, "", 0, "L", false, 0, "")
+		contactLines := strings.Split(doc.SellerContact, "\n")
+		for _, line := range contactLines {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				pdf.SetXY(15, curY)
+				pdf.CellFormat(55, 3.8, line, "", 0, "L", false, 0, "")
+				curY += 3.8
+			}
+		}
 	}
 
 	// Column 2: Bill To
@@ -399,8 +421,15 @@ func Generate(doc PDFDocument, browserPath string) ([]byte, error) {
 		}
 	}
 	if doc.BuyerContact != "" {
-		pdf.SetXY(75, curY)
-		pdf.CellFormat(55, 3.8, doc.BuyerContact, "", 0, "L", false, 0, "")
+		contactLines := strings.Split(doc.BuyerContact, "\n")
+		for _, line := range contactLines {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				pdf.SetXY(75, curY)
+				pdf.CellFormat(55, 3.8, line, "", 0, "L", false, 0, "")
+				curY += 3.8
+			}
+		}
 	}
 
 	// Column 3: Payment Details
@@ -466,7 +495,7 @@ func Generate(doc PDFDocument, browserPath string) ([]byte, error) {
 		// Trigger automatic multi-page overflow breaks cleanly
 		if y+descHeight > 235 {
 			pdf.AddPage()
-			drawDecorations(pdf)
+			drawPageBackground(pdf, doc.WatermarkText)
 			
 			// Redraw table headers on new page
 			pdf.SetFillColor(124, 92, 191)
@@ -537,7 +566,7 @@ func Generate(doc PDFDocument, browserPath string) ([]byte, error) {
 	// --- TOTALS, TERMS, AND NOTES PANEL ---
 	if y+45 > 235 {
 		pdf.AddPage()
-		drawDecorations(pdf)
+		drawPageBackground(pdf, doc.WatermarkText)
 		y = 20
 	}
 

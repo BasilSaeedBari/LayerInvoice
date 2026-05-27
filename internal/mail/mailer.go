@@ -24,10 +24,11 @@ type Mailer struct {
 	Password string
 	From     string
 	FromName string
+	Bcc      string
 }
 
 // NewMailer instantiates a Mailer configuration.
-func NewMailer(host string, port int, user, password, from, fromName string) *Mailer {
+func NewMailer(host string, port int, user, password, from, fromName, bcc string) *Mailer {
 	return &Mailer{
 		Host:     host,
 		Port:     port,
@@ -35,6 +36,7 @@ func NewMailer(host string, port int, user, password, from, fromName string) *Ma
 		Password: password,
 		From:     from,
 		FromName: fromName,
+		Bcc:      bcc,
 	}
 }
 
@@ -50,6 +52,9 @@ func (m *Mailer) Send(to string, subject string, bodyHTML string, attachments ..
 	}
 
 	msg.SetHeader("To", to)
+	if m.Bcc != "" {
+		msg.SetHeader("Bcc", m.Bcc)
+	}
 	msg.SetHeader("Subject", subject)
 	msg.SetBody("text/html", bodyHTML)
 

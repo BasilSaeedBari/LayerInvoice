@@ -52,6 +52,13 @@
         <input type="text" name="smtp_from_name" value="{{.Data.SMTPFromName}}" placeholder="LayerPrint Billing Department" required>
       </label>
     </div>
+
+    <div style="margin-top: var(--space-4);">
+      <label>Default BCC Email Address
+        <input type="email" name="smtp_bcc_email" value="{{.Data.SMTPBccEmail}}" placeholder="archive@yourcompany.com">
+        <small style="color: var(--color-text-secondary);">If configured, every outgoing quote and invoice email will be silently copied to this email address.</small>
+      </label>
+    </div>
   </article>
 
   <div id="test-email-status" style="margin-top: var(--space-4); width: 100%;"></div>

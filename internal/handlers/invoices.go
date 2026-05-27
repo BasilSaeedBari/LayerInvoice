@@ -933,8 +933,12 @@ func (h *InvoicesHandler) getStatusAndEditable(ctx context.Context, tenantID, in
 
 // generatePDFBytes compiles all metadata, seller settings, and line items, generating raw PDF bytes and returning the invoice number.
 func (h *InvoicesHandler) generatePDFBytes(ctx context.Context, tenantID, invoiceID string) ([]byte, string, error) {
+	return h.generatePDFBytesWithWatermark(ctx, tenantID, invoiceID, "")
+}
+
+func (h *InvoicesHandler) generatePDFBytesWithWatermark(ctx context.Context, tenantID, invoiceID string, forcedWatermark string) ([]byte, string, error) {
 	// 1. Fetch Invoice Metadata
-	var invNo, issueDate, dueDate, currency, notes, terms string
+	var invNo, issueDate, dueDate, currency, notes, terms, status string
 	var subtotal, taxRate, taxAmount, discountValue, total int64
 	var buyerName, buyerCompany, buyerEmail, buyerPhone string
 	var bStreet, bCity, bState, bZip, bCountry string
@@ -946,7 +950,8 @@ func (h *InvoicesHandler) generatePDFBytes(ctx context.Context, tenantID, invoic
 			COALESCE(i.notes, ''), COALESCE(i.terms, ''),
 			c.contact_name, COALESCE(c.company_name, ''), COALESCE(c.email, ''), COALESCE(c.phone, ''),
 			COALESCE(c.billing_street, ''), COALESCE(c.billing_city, ''), COALESCE(c.billing_state, ''), 
-			COALESCE(c.billing_zip, ''), COALESCE(c.billing_country, '')
+			COALESCE(c.billing_zip, ''), COALESCE(c.billing_country, ''),
+			i.status
 		FROM invoices i
 		JOIN clients c ON i.client_id = c.id
 		WHERE i.tenant_id = ? AND i.id = ?
@@ -958,6 +963,7 @@ func (h *InvoicesHandler) generatePDFBytes(ctx context.Context, tenantID, invoic
 		&notes, &terms,
 		&buyerName, &buyerCompany, &buyerEmail, &buyerPhone,
 		&bStreet, &bCity, &bState, &bZip, &bCountry,
+		&status,
 	)
 
 	if err != nil {
@@ -988,7 +994,7 @@ func (h *InvoicesHandler) generatePDFBytes(ctx context.Context, tenantID, invoic
 	sellerContact := ""
 	if sEmail != "" { sellerContact += "Email: " + sEmail }
 	if sPhone != "" {
-		if sellerContact != "" { sellerContact += " | " }
+		if sellerContact != "" { sellerContact += "\n" }
 		sellerContact += "Phone: " + sPhone
 	}
 
@@ -1004,7 +1010,7 @@ func (h *InvoicesHandler) generatePDFBytes(ctx context.Context, tenantID, invoic
 	buyerContact := ""
 	if buyerEmail != "" { buyerContact += "Email: " + buyerEmail }
 	if buyerPhone != "" {
-		if buyerContact != "" { buyerContact += " | " }
+		if buyerContact != "" { buyerContact += "\n" }
 		buyerContact += "Phone: " + buyerPhone
 	}
 
@@ -1034,6 +1040,11 @@ func (h *InvoicesHandler) generatePDFBytes(ctx context.Context, tenantID, invoic
 	companyLogo := h.getSetting(ctx, tenantID, "company_logo", "")
 	browserPath := h.getSetting(ctx, tenantID, "pdf_browser_path", "")
 
+	watermark := forcedWatermark
+	if watermark == "" && status == "paid" {
+		watermark = "PAID"
+	}
+
 	doc := pdf.PDFDocument{
 		Title:           "INVOICE",
 		DocNumber:       invNo,
@@ -1041,6 +1052,7 @@ func (h *InvoicesHandler) generatePDFBytes(ctx context.Context, tenantID, invoic
 		ExpiryOrDueDate: dueDate,
 		Currency:        currency,
 		CompanyLogo:     companyLogo,
+		WatermarkText:   watermark,
 		SellerName:      sellerName,
 		SellerAddress:   sellerAddress,
 		SellerContact:   sellerContact,
@@ -1109,7 +1121,8 @@ func (h *InvoicesHandler) sendInvoiceEmail(ctx context.Context, tenantID, invoic
 		return
 	}
 
-	m := mail.NewMailer(smtpHost, smtpPort, smtpUser, smtpPass, smtpFromEmail, smtpFromName)
+	smtpBcc := h.getSetting(ctx, tenantID, "smtp_bcc_email", "")
+	m := mail.NewMailer(smtpHost, smtpPort, smtpUser, smtpPass, smtpFromEmail, smtpFromName, smtpBcc)
 
 	formattedTotal := money.New(total, currency).String()
 	subject := fmt.Sprintf("Invoice %s from %s", invoiceNum, smtpFromName)
@@ -1252,3 +1265,110 @@ func (h *InvoicesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	SetFlash(w, "flash_success", "Invoice successfully deleted.")
 	http.Redirect(w, r, "/invoices", http.StatusSeeOther)
 }
+
+// SendPaidEmail mails the paid invoice with a PAID watermark and receipt message.
+func (h *InvoicesHandler) SendPaidEmail(w http.ResponseWriter, r *http.Request) {
+	tenant, _ := auth.GetTenant(r.Context())
+	invoiceID := chi.URLParam(r, "id")
+	ctx := r.Context()
+
+	// 1. Fetch details to confirm status and totals
+	var clientEmail, contactName, invoiceNum, currency, status string
+	var total, amountPaid int64
+	query := `
+		SELECT c.email, c.contact_name, i.invoice_number, i.currency, i.total, i.amount_paid, i.status
+		FROM invoices i
+		JOIN clients c ON i.client_id = c.id
+		WHERE i.tenant_id = ? AND i.id = ?
+	`
+	err := h.app.DB.QueryRowContext(ctx, query, tenant.ID, invoiceID).Scan(
+		&clientEmail, &contactName, &invoiceNum, &currency, &total, &amountPaid, &status,
+	)
+	if err != nil {
+		SetFlash(w, "flash_error", "Failed to retrieve invoice details.")
+		http.Redirect(w, r, "/invoices/"+invoiceID, http.StatusSeeOther)
+		return
+	}
+
+	if clientEmail == "" {
+		SetFlash(w, "flash_error", "No email address found for this client.")
+		http.Redirect(w, r, "/invoices/"+invoiceID, http.StatusSeeOther)
+		return
+	}
+
+	smtpHost := h.getSetting(ctx, tenant.ID, "smtp_host", "")
+	smtpPortStr := h.getSetting(ctx, tenant.ID, "smtp_port", "")
+	smtpUser := h.getSetting(ctx, tenant.ID, "smtp_user", "")
+	smtpPass := h.getSetting(ctx, tenant.ID, "smtp_pass", "")
+	smtpFromEmail := h.getSetting(ctx, tenant.ID, "smtp_from_email", "")
+	smtpFromName := h.getSetting(ctx, tenant.ID, "smtp_from_name", "")
+
+	if smtpHost == "" || smtpPortStr == "" || smtpUser == "" || smtpPass == "" {
+		SetFlash(w, "flash_error", "SMTP is not fully configured in settings. Cannot send email.")
+		http.Redirect(w, r, "/invoices/"+invoiceID, http.StatusSeeOther)
+		return
+	}
+
+	smtpPort, err := strconv.Atoi(smtpPortStr)
+	if err != nil {
+		SetFlash(w, "flash_error", "Invalid SMTP configuration port.")
+		http.Redirect(w, r, "/invoices/"+invoiceID, http.StatusSeeOther)
+		return
+	}
+
+	// 2. Generate PDF with "PAID" watermark
+	pdfBytes, _, err := h.generatePDFBytesWithWatermark(ctx, tenant.ID, invoiceID, "PAID")
+	if err != nil {
+		SetFlash(w, "flash_error", "Failed to generate paid PDF: "+err.Error())
+		http.Redirect(w, r, "/invoices/"+invoiceID, http.StatusSeeOther)
+		return
+	}
+
+	// 3. Format message and send
+	smtpBcc := h.getSetting(ctx, tenant.ID, "smtp_bcc_email", "")
+	m := mail.NewMailer(smtpHost, smtpPort, smtpUser, smtpPass, smtpFromEmail, smtpFromName, smtpBcc)
+	formattedPaid := money.New(amountPaid, currency).String()
+	
+	subject := fmt.Sprintf("Payment Received: Invoice %s Paid Receipt", invoiceNum)
+	body := fmt.Sprintf(`Hello %s,
+	
+Thank you! We have received your payment of %s for invoice %s.
+
+Please find attached the paid invoice receipt in PDF format.
+
+Best regards,
+%s`, contactName, formattedPaid, invoiceNum, smtpFromName)
+
+	bodyHTML := strings.ReplaceAll(body, "\n", "<br>")
+
+	attachment := mail.Attachment{
+		Name:    fmt.Sprintf("%s_PAID.pdf", invoiceNum),
+		Content: pdfBytes,
+	}
+
+	err = m.Send(clientEmail, subject, bodyHTML, attachment)
+
+	logStatus := "sent"
+	var errStr sql.NullString
+	if err != nil {
+		logStatus = "failed"
+		errStr.String = err.Error()
+		errStr.Valid = true
+		slog.Error("SMTP paid receipt dispatch failed", "invoice", invoiceNum, "client", clientEmail, "error", err)
+		SetFlash(w, "flash_error", "Failed to send email: "+err.Error())
+	} else {
+		slog.Info("SMTP paid receipt sent successfully", "invoice", invoiceNum, "client", clientEmail)
+		SetFlash(w, "flash_success", "Paid receipt email sent successfully to "+clientEmail)
+	}
+
+	// Log the sent email in audit table
+	logID := db.NewULID()
+	now := time.Now().Format(time.RFC3339)
+	_, _ = h.app.DB.ExecContext(ctx, `
+		INSERT INTO email_log (id, tenant_id, parent_type, parent_id, to_address, subject, status, error, sent_at)
+		VALUES (?, ?, 'invoice', ?, ?, ?, ?, ?, ?)
+	`, logID, tenant.ID, invoiceID, clientEmail, subject, logStatus, errStr, now)
+
+	http.Redirect(w, r, "/invoices/"+invoiceID, http.StatusSeeOther)
+}
+

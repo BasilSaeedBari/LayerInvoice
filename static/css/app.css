@@ -308,6 +308,17 @@ body {
   border-color: #b91c1c;
 }
 
+.li-btn--success {
+  background-color: var(--color-status-paid);
+  color: var(--color-text-inverse) !important;
+  border-color: var(--color-status-paid);
+}
+
+.li-btn--success:hover {
+  background-color: #15803d;
+  border-color: #15803d;
+}
+
 .li-btn--sm {
   padding: var(--space-1) var(--space-2);
   font-size: var(--text-small);

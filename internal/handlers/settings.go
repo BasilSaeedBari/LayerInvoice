@@ -44,6 +44,7 @@ type SettingsPageData struct {
 	SMTPPass      string
 	SMTPFromEmail string
 	SMTPFromName  string
+	SMTPBccEmail  string
 }
 
 // ShowCompany renders the company profile settings panel.
@@ -134,6 +135,7 @@ func (h *SettingsHandler) ShowEmail(w http.ResponseWriter, r *http.Request) {
 		SMTPPass:      h.getSetting(ctx, tenant.ID, "smtp_pass", ""),
 		SMTPFromEmail: h.getSetting(ctx, tenant.ID, "smtp_from_email", ""),
 		SMTPFromName:  h.getSetting(ctx, tenant.ID, "smtp_from_name", ""),
+		SMTPBccEmail:  h.getSetting(ctx, tenant.ID, "smtp_bcc_email", ""),
 	}
 
 	Render(w, r, h.app.TemplatesFS, "base", "settings/email.html", data, "SMTP Server Config", "settings")
@@ -150,7 +152,7 @@ func (h *SettingsHandler) SaveEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fields := []string{
-		"smtp_host", "smtp_port", "smtp_user", "smtp_pass", "smtp_from_email", "smtp_from_name",
+		"smtp_host", "smtp_port", "smtp_user", "smtp_pass", "smtp_from_email", "smtp_from_name", "smtp_bcc_email",
 	}
 
 	for _, key := range fields {
@@ -178,6 +180,7 @@ func (h *SettingsHandler) TestEmail(w http.ResponseWriter, r *http.Request) {
 	smtpPass := r.FormValue("smtp_pass")
 	smtpFromEmail := r.FormValue("smtp_from_email")
 	smtpFromName := r.FormValue("smtp_from_name")
+	smtpBcc := r.FormValue("smtp_bcc_email")
 
 	// Fallback to database configurations if form fields are blank
 	if smtpHost == "" {
@@ -198,6 +201,9 @@ func (h *SettingsHandler) TestEmail(w http.ResponseWriter, r *http.Request) {
 	if smtpFromName == "" {
 		smtpFromName = h.getSetting(ctx, tenant.ID, "smtp_from_name", "")
 	}
+	if smtpBcc == "" {
+		smtpBcc = h.getSetting(ctx, tenant.ID, "smtp_bcc_email", "")
+	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
@@ -212,7 +218,7 @@ func (h *SettingsHandler) TestEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m := mail.NewMailer(smtpHost, smtpPort, smtpUser, smtpPass, smtpFromEmail, smtpFromName)
+	m := mail.NewMailer(smtpHost, smtpPort, smtpUser, smtpPass, smtpFromEmail, smtpFromName, smtpBcc)
 	
 	subject := "LayerInvoice SMTP Connection Test"
 	bodyHTML := "<h3>SMTP Mailer Connection Test Successful!</h3><p>Your LayerInvoice SMTP email server is correctly configured and successfully sending outbound mail.</p>"

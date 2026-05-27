@@ -304,6 +304,7 @@ Controls client billing lifecycle, updates, live cost calculations, and email wo
   - **Outputs**: Renders a dynamic calculation breakdown HTML block.
   - **Description**: Computes print costs live on every keypress or selection. Markup and failure variables are processed directly using standard percentages.
 - **`TransitionStatus(...)`**: Updates status. When changing to `'sent'`, it executes an immediate background email dispatch.
+- **`SendPaidEmail(...)`**: Mails paid receipts with customized email text and a PDF featuring a background "PAID" watermark.
 - **`Delete(...)`**: Stops debounced email background timers, starts transaction, and deletes the invoice (SQLite cascades deletion to payment registries, causing all financial totals to update dynamically).
 
 ---

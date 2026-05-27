@@ -843,7 +843,7 @@ func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
 	sellerContact := ""
 	if sEmail != "" { sellerContact += "Email: " + sEmail }
 	if sPhone != "" {
-		if sellerContact != "" { sellerContact += " | " }
+		if sellerContact != "" { sellerContact += "\n" }
 		sellerContact += "Phone: " + sPhone
 	}
 
@@ -859,7 +859,7 @@ func (h *QuotesHandler) ShowPDF(w http.ResponseWriter, r *http.Request) {
 	buyerContact := ""
 	if buyerEmail != "" { buyerContact += "Email: " + buyerEmail }
 	if buyerPhone != "" {
-		if buyerContact != "" { buyerContact += " | " }
+		if buyerContact != "" { buyerContact += "\n" }
 		buyerContact += "Phone: " + buyerPhone
 	}
 

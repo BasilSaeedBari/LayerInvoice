@@ -23,6 +23,10 @@
       <a href="/invoices/{{.Data.ID}}/status?to=sent" class="li-btn li-btn--secondary">🚀 Resend Invoice</a>
     {{end}}
     
+    {{if eq .Data.Status "paid"}}
+      <a href="/invoices/{{.Data.ID}}/send-paid" class="li-btn li-btn--success">✉ Email Paid Receipt</a>
+    {{end}}
+    
     {{if $isDraft}}
       <a href="/invoices/{{.Data.ID}}/status?to=sent" class="li-btn li-btn--primary">🚀 Mark as Sent</a>
     {{else if and (ne .Data.Status "paid") (ne .Data.Status "cancelled") (ne .Data.Status "refunded")}}

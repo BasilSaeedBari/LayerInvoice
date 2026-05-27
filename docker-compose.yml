@@ -1,33 +1,24 @@
-version: "3.9"
-
 services:
-  app:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    restart: unless-stopped
+  layerinvoice:
+    image: ghcr.io/basilsaeedbari/layerinvoice:latest
+    container_name: layerinvoice_app
+    restart: always
     volumes:
-      - ./data:/data
+      - layerinvoice_data:/app/data
     environment:
-      - DB_PATH=/data/layerinvoice.db
-      - SESSION_SECRET=${SESSION_SECRET:-a_very_long_secure_random_string_here_32_chars}
+      - DB_PATH=/app/data/layerinvoice.db
+      - SESSION_SECRET=choose_a_long_secure_random_string_here_32_chars
       - APP_ENV=production
       - PORT=8080
-    ports:
-      - "8080:8080"
+    networks:
+      - proxy-net
     labels:
-      - caddy=layerinvoice.local
-      - caddy.reverse_proxy={{upstreams 8080}}
+      caddy: layerinvoice.basilsaeedbari.com
+      caddy.reverse_proxy: "{{upstreams 8080}}"
 
-  caddy:
-    image: lucaslorentz/caddy-docker-proxy:ci-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - caddy_data:/data
+networks:
+  proxy-net:
+    external: true
 
 volumes:
-  caddy_data:
+  layerinvoice_data:
