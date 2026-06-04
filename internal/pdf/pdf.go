@@ -567,7 +567,7 @@ func Generate(doc PDFDocument, browserPath string) ([]byte, error) {
 	if y+45 > 235 {
 		pdf.AddPage()
 		drawPageBackground(pdf, doc.WatermarkText)
-		y = 20
+		y = 45
 	}
 
 	totalsY := y + 5
